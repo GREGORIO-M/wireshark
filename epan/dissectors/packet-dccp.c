@@ -160,7 +160,9 @@ static const range_string dccp_options_rvals[] = {
     {0x2A, 0x2A, "Timestamp Echo"},
     {0x2B, 0x2B, "Elapsed Time"},
     {0x2C, 0x2C, "Data checksum"},
-    {0x2D, 0x7F, "Reserved"},
+    {0x2D, 0x2D, "Reserved"},
+    {0x2E, 0x2E, "MPDCCP"},
+    {0x2F, 0x7F, "Reserved"},
     {0x80, 0xBF, "CCID option"},
     {0xC0, 0xC0, "CCID3 Loss Event Rate"},
     {0xC1, 0xC1, "CCID3 Loss Intervals"},
@@ -226,6 +228,40 @@ static int hf_dccp_timestamp = -1;
 static int hf_dccp_timestamp_echo = -1;
 static int hf_dccp_elapsed_time = -1;
 static int hf_dccp_data_checksum = -1;
+
+/* MP-DCCP Option fields */
+static int hf_mpdccp_confirm = -1;
+
+static int hf_mpdccp_join = -1;
+static int hf_mpdccp_join_id = -1;
+static int hf_mpdccp_join_token = -1;
+static int hf_mpdccp_join_nonce = -1;
+
+static int hf_mpdccp_fast_close = -1;
+
+static int hf_mpdccp_key = -1;
+static int hf_mpdccp_key_type = -1;
+static int hf_mpdccp_key_key = -1;
+
+static int hf_mpdccp_seq = -1;
+
+static int hf_mpdccp_hmac = -1;
+
+static int hf_mpdccp_rtt = -1;
+static int hf_mpdccp_rtt_type = -1;
+static int hf_mpdccp_rtt_value = -1;
+static int hf_mpdccp_rtt_age = -1;
+
+//static int hf_mpdccp_addaddr = -1;
+//static int hf_mpdccp_removeaddr = -1;
+
+static int hf_mpdccp_prio = -1;
+static int hf_mpdccp_prio_value = -1;
+static int hf_mpdccp_prio_id = -1;
+
+static int hf_mpdccp_close = -1;
+
+static int hf_dccp_option_data = -1;
 
 /* Generated from convert_proto_tree_add_text.pl */
 static int hf_dccp_padding = -1;
@@ -700,8 +736,14 @@ dissect_options(tvbuff_t *tvb, packet_info *pinfo,
     guint8      option_type = 0;
     guint8      option_len  = 0;
     guint32     p;
+    guint8      mp_option_type = 0;
+
+
     proto_item *option_item;
     proto_tree *option_tree;
+    proto_item *mp_option_sub_item;
+    proto_tree *mp_option_sub_tree;
+
 
     while (offset < offset_end) {
         /* first byte is the option type */
@@ -811,6 +853,110 @@ dissect_options(tvbuff_t *tvb, packet_info *pinfo,
                 expert_add_info_format(pinfo, option_item, &ei_dccp_option_len_bad,
                                         "Wrong Data checksum length");
             break;
+        case 46:
+            mp_option_type = tvb_get_guint8(tvb, offset);
+            option_len -= 1;
+
+            switch (mp_option_type) {
+                case 0:
+                    proto_tree_add_item(option_tree, hf_mpdccp_confirm, tvb, offset, option_len, ENC_BIG_ENDIAN);
+                    break;
+                case 1:
+                    mp_option_sub_item = proto_tree_add_item(option_tree, hf_mpdccp_join, tvb, offset, 1, ENC_BIG_ENDIAN);
+                    mp_option_sub_tree = proto_item_add_subtree(mp_option_sub_item, ett_dccp_options_item);
+                    offset += 1;
+                    if (option_len == 9) {
+                        proto_tree_add_item(mp_option_sub_tree, hf_mpdccp_join_id, tvb, offset, 1, ENC_BIG_ENDIAN);
+                        proto_tree_add_item(mp_option_sub_tree, hf_mpdccp_join_token, tvb, offset+1, 4, ENC_BIG_ENDIAN);
+                        proto_tree_add_item(mp_option_sub_tree, hf_mpdccp_join_nonce, tvb, offset+5, 4, ENC_BIG_ENDIAN);
+                    } else {
+                        mp_option_sub_item = proto_tree_add_item(option_tree, hf_dccp_option_data, tvb, offset, option_len, ENC_NA);
+                        expert_add_info_format(pinfo, mp_option_sub_item, &ei_dccp_option_len_bad,
+                                   "Wrong Data checksum length, [%u != 9]", option_len);
+                    }
+                    break;
+
+                case 2:
+                    proto_tree_add_item(option_tree, hf_mpdccp_fast_close, tvb, offset, option_len, ENC_BIG_ENDIAN);
+                    break;
+                case 3:
+                    mp_option_sub_item = proto_tree_add_item(option_tree, hf_mpdccp_key, tvb, offset, 1, ENC_BIG_ENDIAN);
+                    mp_option_sub_tree = proto_item_add_subtree(mp_option_sub_item, ett_dccp_options_item);
+                    offset += 1;
+                    if (option_len > 8 && option_len < 69) {
+                        proto_tree_add_item(mp_option_sub_tree, hf_mpdccp_key_type, tvb, offset, 1, ENC_BIG_ENDIAN);
+                        proto_tree_add_item(mp_option_sub_tree, hf_mpdccp_key_key, tvb, offset+1, option_len, ENC_BIG_ENDIAN);
+                    } else {
+                        mp_option_sub_item = proto_tree_add_item(mp_option_sub_tree, hf_dccp_option_data, tvb, offset, option_len, ENC_NA);
+                        expert_add_info_format(pinfo, mp_option_sub_item, &ei_dccp_option_len_bad,
+                                   "Wrong Data checksum length, [%u < 9]", option_len);
+                    }
+                    break;
+                case 4:
+                    if (option_len == 4) {
+                        proto_tree_add_item(option_tree, hf_mpdccp_seq, tvb, offset, 4, ENC_BIG_ENDIAN);
+                        //col_add_fstr(pinfo->cinfo, COL_INFO, "OaSeq: %u", tvb_get_guint32(tvb, offset, ENC_BIG_ENDIAN));
+                    } else  {
+                        mp_option_sub_item = proto_tree_add_item(option_tree, hf_mpdccp_seq, tvb, offset, option_len, ENC_BIG_ENDIAN);
+                        expert_add_info_format(pinfo, mp_option_sub_item, &ei_dccp_option_len_bad,
+                                   "Wrong Data checksum length, [%u != 4]", option_len);
+                    }
+                    break;
+                case 5:
+                    if (option_len == 20) {
+                        proto_tree_add_item(option_tree, hf_mpdccp_hmac, tvb, offset, 20, ENC_BIG_ENDIAN);
+                    } else {
+                        mp_option_sub_item = proto_tree_add_item(option_tree, hf_mpdccp_hmac, tvb, offset, option_len, ENC_BIG_ENDIAN);
+                        expert_add_info_format(pinfo, mp_option_sub_item, &ei_dccp_option_len_bad,
+                                   "Wrong Data checksum length, [%u != 20]", option_len);
+                    }
+                    break;
+                case 6:
+                    mp_option_sub_item = proto_tree_add_item(option_tree, hf_mpdccp_rtt, tvb, offset, 1, ENC_BIG_ENDIAN);
+                    mp_option_sub_tree = proto_item_add_subtree(mp_option_sub_item, ett_dccp_options_item);
+                    offset += 1;
+                    if (option_len == 9) {
+                        proto_tree_add_item(mp_option_sub_tree, hf_mpdccp_rtt_type,
+                                    tvb, offset, 1, ENC_BIG_ENDIAN);
+                        proto_tree_add_item(mp_option_sub_tree, hf_mpdccp_rtt_value,
+                                    tvb, offset+1, 4, ENC_BIG_ENDIAN);
+                        proto_tree_add_item(mp_option_sub_tree, hf_mpdccp_rtt_age,
+                                    tvb, offset+5, 4, ENC_BIG_ENDIAN);
+                    } else {
+                        mp_option_sub_item = proto_tree_add_item(mp_option_sub_tree, hf_dccp_option_data, tvb, offset, option_len, ENC_NA);
+                        expert_add_info_format(pinfo, mp_option_sub_item, &ei_dccp_option_len_bad,
+                                   "Wrong Data checksum length, [%u != 9]", option_len);
+                    }
+                    break;
+/*              case 7:              //To-Do add MP_ADDADDR and MP_REMOVEADDR 
+                    break;
+                case 8:
+                    break; */
+                case 9:
+                    mp_option_sub_item = proto_tree_add_item(option_tree, hf_mpdccp_prio, tvb, offset, 1, ENC_BIG_ENDIAN);
+                    mp_option_sub_tree = proto_item_add_subtree(mp_option_sub_item, ett_dccp_options_item);
+                    offset += 1;
+                    if (option_len == 2) {
+                        proto_tree_add_item(mp_option_sub_tree, hf_mpdccp_prio_id, tvb, offset, 1, ENC_BIG_ENDIAN);
+                        proto_tree_add_item(mp_option_sub_tree, hf_mpdccp_prio_value, tvb, offset+1, 1, ENC_BIG_ENDIAN);
+                    } else {
+                        mp_option_sub_item = proto_tree_add_item(mp_option_sub_tree, hf_dccp_option_data, tvb, offset, option_len, ENC_NA);
+                        expert_add_info_format(pinfo, mp_option_sub_item, &ei_dccp_option_len_bad,
+                                   "Wrong Data checksum length, [%u != 2]", option_len);
+                    }
+                    break;
+                case 10:
+                    mp_option_sub_item = proto_tree_add_item(option_tree, hf_mpdccp_close,
+                                    tvb, offset, option_len, ENC_BIG_ENDIAN);
+                    break;
+                default:
+                    mp_option_sub_item = proto_tree_add_item(mp_option_sub_tree, hf_dccp_option_data, tvb, offset, option_len, ENC_NA);
+                    expert_add_info_format(pinfo, mp_option_sub_item, &ei_dccp_option_len_bad,
+                                   "MP-DCCP option [%u] not defined, [len: %u ]", mp_option_type, option_len);
+                    break;
+            }
+            break;
+
         case 192: /* RFC 4342, 8.5 */
             if (option_len == 4) {
                 p = tvb_get_ntohl(tvb, offset);
@@ -1633,6 +1779,41 @@ proto_register_dccp(void)
                 NULL, HFILL
             }
         },
+
+
+        /*  MP-DCCP related option fields  */
+        {&hf_mpdccp_confirm,{"MP_CONFIRM", "mpdccp.mp_confirm",FT_NONE, BASE_NONE, NULL, 0x0, NULL, HFILL}},
+
+        {&hf_mpdccp_join,{"MP_JOIN", "mpdccp.mp_join",FT_NONE, BASE_NONE, NULL, 0x0, NULL, HFILL}},
+        {&hf_mpdccp_join_id,{"MP_JOIN id", "mpdccp.mp_join",FT_UINT8, BASE_DEC, NULL, 0x0, NULL, HFILL}},
+        {&hf_mpdccp_join_token,{"MP_JOIN token", "mpdccp.mp_join",FT_UINT32, BASE_HEX, NULL, 0x0, NULL, HFILL}},
+        {&hf_mpdccp_join_nonce,{"MP_JOIN nonce", "mpdccp.mp_join",FT_UINT32, BASE_HEX, NULL, 0x0, NULL, HFILL}},
+
+        {&hf_mpdccp_fast_close,{"MP_FAST_CLOSE", "mpdccp.mp_fast_close",FT_NONE, BASE_NONE, NULL, 0x0, NULL, HFILL}},
+
+        {&hf_mpdccp_key,{"MP_KEY", "mpdccp.mp_key",FT_NONE, BASE_NONE, NULL, 0x0, NULL, HFILL}},
+        {&hf_mpdccp_key_type,{"MP_KEY type", "mpdccp.mp_key_type",FT_NONE, BASE_NONE, NULL, 0x0, NULL, HFILL}},
+        {&hf_mpdccp_key_key,{"MP_KEY hash", "mpdccp.mp_key_hash",FT_NONE, BASE_NONE, NULL, 0x0, NULL, HFILL}},
+
+        {&hf_mpdccp_seq,{"MP_SEQ", "mpdccp.mp_seq",FT_UINT32, BASE_DEC, NULL, 0x0, NULL, HFILL}},
+
+        {&hf_mpdccp_hmac,{"MP_HMAC", "mpdccp.mp_hmac",FT_NONE, BASE_NONE, NULL, 0x0, NULL, HFILL}},
+
+        {&hf_mpdccp_rtt,{"MP_RTT", "mpdccp.mp_rtt",FT_NONE, BASE_NONE, NULL, 0x0, NULL, HFILL}},
+        {&hf_mpdccp_rtt_type,{"RTT_TYPE", "mpdccp.rtt_type",FT_UINT8, BASE_DEC, NULL, 0x0, NULL, HFILL}},
+        {&hf_mpdccp_rtt_value,{"RTT_VALUE", "mpdccp.rtt_value",FT_UINT32, BASE_DEC, NULL, 0x0, NULL, HFILL}},
+        {&hf_mpdccp_rtt_age,{"RTT_AGE", "mpdccp.rtt_age",FT_UINT32, BASE_DEC, NULL, 0x0, NULL, HFILL}},
+
+    //  {&hf_mpdccp_addaddr,{"MP_ADDADDR", "mpdccp.mp_addaddr",FT_NONE, BASE_NONE, NULL, 0x0, NULL, HFILL}},
+    //  {&hf_mpdccp_removeaddr,{"MP_REMOVEADDR", "mpdccp.mp_removeaddr",FT_NONE, BASE_NONE, NULL, 0x0, NULL, HFILL}},
+        {&hf_mpdccp_prio,{"MP_PRIO", "mpdccp.mp_prio",FT_NONE, BASE_NONE, NULL, 0x0, NULL, HFILL}},
+        {&hf_mpdccp_prio_id,{"MP_PRIO id", "mpdccp.mp_prio",FT_UINT8, BASE_DEC, NULL, 0x0, NULL, HFILL}},
+        {&hf_mpdccp_prio_value,{"MP_PRIO value", "mpdccp.mp_prio",FT_UINT8, BASE_DEC, NULL, 0x0, NULL, HFILL}},
+
+        {&hf_mpdccp_close,{"MP_CLOSE", "mpdccp.mp_close",FT_NONE, BASE_NONE, NULL, 0x0, NULL, HFILL}},
+
+        {&hf_dccp_option_data,{"Option data", "mpdccp.mp_option",FT_BYTES, BASE_NONE, NULL, 0x0, NULL, HFILL}},
+
         {
             &hf_dccp_options,
             {
