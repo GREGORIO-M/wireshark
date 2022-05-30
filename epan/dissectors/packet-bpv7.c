@@ -1,7 +1,7 @@
 /* packet-bpv7.c
  * Routines for Bundle Protocol Version 7 dissection
  * References:
- *     BPv7: https://datatracker.ietf.org/doc/html/draft-ietf-dtn-bpbis-31
+ *     RFC 9171: https://www.rfc-editor.org/rfc/rfc9171.html
  *
  * Copyright 2019-2021, Brian Sipos <brian.sipos@gmail.com>
  *
@@ -1296,7 +1296,7 @@ static void show_status_subj_ref(gpointer key, gpointer val _U_, gpointer data) 
 }
 
 /// Stable sort, preserving relative order of same priority
-int block_dissect_sort(gconstpointer a, gconstpointer b) {
+static int block_dissect_sort(gconstpointer a, gconstpointer b) {
     DISSECTOR_ASSERT(a && b);
     const bp_block_canonical_t *aobj = *(bp_block_canonical_t **)a;
     const bp_block_canonical_t *bobj = *(bp_block_canonical_t **)b;

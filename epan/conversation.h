@@ -21,9 +21,13 @@ extern "C" {
 #endif /* __cplusplus */
 
 /**
- *@file
+ * @file
+ * The conversation API lets you correlate packets based on values in a
+ * packet, typically address+port tuples. You can search for conversations
+ * based on their value tuples and attach data to them.
  */
-/*
+
+/**
  * Flags to pass to "conversation_new()" to indicate that the address 2
  * and/or port 2 values for the conversation should be wildcards.
  * The CONVERSATION_TEMPLATE option tells that any of the other supplied
@@ -39,15 +43,15 @@ extern "C" {
 #define NO_PORT2_FORCE 0x04
 #define CONVERSATION_TEMPLATE 0x08
 
-/*
+/**
  * Flags to pass to "find_conversation()" to indicate that the address B
  * and/or port B search arguments are wildcards.
  */
 #define NO_ADDR_B 0x01
 #define NO_PORT_B 0x02
 
-/* Flags to handle endpoints */
-#define USE_LAST_ENDPOINT 0x08		/* Use last endpoint created, regardless of type */
+/** Flags to handle endpoints */
+#define USE_LAST_ENDPOINT 0x08		/**< Use last endpoint created, regardless of type */
 
 /* Types of port numbers Wireshark knows about. */
 typedef enum {
@@ -82,15 +86,18 @@ typedef enum {
     ENDPOINT_DVBBBF,        /* DVB Base Band Frame ISI/PLP_ID */
     ENDPOINT_IWARP_MPA,		/* iWarp MPA */
     ENDPOINT_BT_UTP,        /* BitTorrent uTP Connection ID */
-
+    ENDPOINT_LOG,			/* Logging source */
 } endpoint_type;
 
 /**
- * Data structure representing a conversation.
+ * Key used for identifying a conversation.
  */
 struct conversation_key;
 typedef struct conversation_key* conversation_key_t;
 
+/**
+ * Data structure representing a conversation.
+ */
 typedef struct conversation {
     struct conversation *next;	/** pointer to next conversation on hash chain */
     struct conversation *last;	/** pointer to the last conversation on hash chain */
@@ -124,18 +131,70 @@ extern void conversation_init(void);
  */
 extern void conversation_epan_reset(void);
 
-/*
+/**
+ * Conversation element type.
+ */
+typedef enum {
+    CE_ENDPOINT,
+    CE_ADDRESS,
+    CE_STRING,
+    CE_UINT,
+    CE_UINT64,
+} conversation_element_type;
+
+/**
+ * Elements used to identify conversations for *_full routines and pinfo->conv_elements.
+ * Arrays must be terminated with an element .type set to CE_ENDPOINT.
+ */
+typedef struct conversation_element {
+    conversation_element_type type;
+    union {
+        endpoint_type endpoint_type_val;
+        address addr_val;
+        const char *str_val;
+        unsigned int uint_val;
+        uint64_t uint64_val;
+    };
+} conversation_element_t;
+
+/**
+ * Create a new conversation identified by a list of elements.
+ * @param setup_frame The first frame in the conversation.
+ * @param elements An array of element types and values. Must not be NULL. Must be terminated with a CE_ENDPOINT element.
+ * @return The new conversation.
+ */
+WS_DLL_PUBLIC WS_RETNONNULL conversation_t *conversation_new_full(const guint32 setup_frame, conversation_element_t *elements);
+
+/**
  * Given two address/port pairs for a packet, create a new conversation
- * to contain packets between those address/port pairs.
+ * identified by address/port pairs.
  *
  * The options field is used to specify whether the address 2 value
  * and/or port 2 value are not given and any value is acceptable
  * when searching for this conversation.
+ *
+ * @param setup_frame The first frame in the conversation.
+ * @param addr1 The first address in the identifying tuple.
+ * @param addr2 The second address in the identifying tuple.
+ * @param etype The endpoint type.
+ * @param port1 The first port in the identifying tuple.
+ * @param port2 The second port in the identifying tuple.
+ * @param options NO_ADDR2, NO_PORT2, NO_PORT2_FORCE, or CONVERSATION_TEMPLATE.
+ *        Options except for NO_PORT2 and NO_PORT2_FORCE can be ORed.
+ * @return The new conversation.
  */
-WS_DLL_PUBLIC conversation_t *conversation_new(const guint32 setup_frame, const address *addr1, const address *addr2,
+WS_DLL_PUBLIC WS_RETNONNULL conversation_t *conversation_new(const guint32 setup_frame, const address *addr1, const address *addr2,
     const endpoint_type etype, const guint32 port1, const guint32 port2, const guint options);
 
-WS_DLL_PUBLIC conversation_t *conversation_new_by_id(const guint32 setup_frame, const endpoint_type etype, const guint32 id, const guint options);
+WS_DLL_PUBLIC WS_RETNONNULL conversation_t *conversation_new_by_id(const guint32 setup_frame, const endpoint_type etype, const guint32 id);
+
+/**
+ * Search for a conversation based on the structure and values of an element list.
+ * @param frame_num Frame number. Must be greater than or equal to the conversation's initial frame number.
+ * @param elements An array of element types and values. Must not be NULL. Must be terminated with a CE_ENDPOINT element.
+ * @return The matching conversation if found, otherwise NULL.
+ */
+WS_DLL_PUBLIC conversation_t *find_conversation_full(const guint32 frame_num, conversation_element_t *elements);
 
 /**
  * Given two address/port pairs for a packet, search for a conversation
@@ -172,30 +231,43 @@ WS_DLL_PUBLIC conversation_t *conversation_new_by_id(const guint32 setup_frame, 
  *	a pointer to the matched conversation;
  *
  *	otherwise, we found no matching conversation, and return NULL.
+ *
+ * @param frame_num Frame number. Must be greater than or equal to the conversation's initial frame number.
+ * @param addr_a The first address in the identifying tuple.
+ * @param addr_b The second address in the identifying tuple.
+ * @param etype The endpoint type.
+ * @param port_a The first port in the identifying tuple.
+ * @param port_b The second port in the identifying tuple.
+ * @param options Wildcard options as described above.
+ * @return The matching conversation if found, otherwise NULL.
  */
 WS_DLL_PUBLIC conversation_t *find_conversation(const guint32 frame_num, const address *addr_a, const address *addr_b,
     const endpoint_type etype, const guint32 port_a, const guint32 port_b, const guint options);
 
-WS_DLL_PUBLIC conversation_t *find_conversation_by_id(const guint32 frame, const endpoint_type etype, const guint32 id, const guint options);
+WS_DLL_PUBLIC conversation_t *find_conversation_by_id(const guint32 frame, const endpoint_type etype, const guint32 id);
 
 /**  A helper function that calls find_conversation() using data from pinfo
  *  The frame number and addresses are taken from pinfo.
  */
 WS_DLL_PUBLIC conversation_t *find_conversation_pinfo(packet_info *pinfo, const guint options);
 
-/**  A helper function that calls find_conversation() and, if a conversation is
- *  not found, calls conversation_new().
- *  The frame number and addresses are taken from pinfo.
- *  No options are used, though we could extend this API to include an options
- *  parameter.
+/**
+ * A helper function that calls find_conversation() and, if a conversation is
+ * not found, calls conversation_new().
+ * The frame number and addresses are taken from pinfo.
+ * No options are used, though we could extend this API to include an options
+ * parameter.
+ *
+ * @param pinfo Packet info.
+ * @return The existing or new conversation.
  */
-WS_DLL_PUBLIC conversation_t *find_or_create_conversation(packet_info *pinfo);
+WS_DLL_PUBLIC WS_RETNONNULL conversation_t *find_or_create_conversation(packet_info *pinfo);
 
 /**  A helper function that calls find_conversation_by_id() and, if a
  *  conversation is not found, calls conversation_new_by_id().
  *  The frame number is taken from pinfo.
  */
-WS_DLL_PUBLIC conversation_t *find_or_create_conversation_by_id(packet_info *pinfo, const endpoint_type etype, const guint32 id);
+WS_DLL_PUBLIC WS_RETNONNULL conversation_t *find_or_create_conversation_by_id(packet_info *pinfo, const endpoint_type etype, const guint32 id);
 
 /** Associate data with a conversation.
  * @param conv Conversation. Must not be NULL.
@@ -225,10 +297,10 @@ WS_DLL_PUBLIC void conversation_set_dissector_from_frame_number(conversation_t *
 WS_DLL_PUBLIC dissector_handle_t conversation_get_dissector(conversation_t *conversation, const guint32 frame_num);
 
 WS_DLL_PUBLIC void conversation_create_endpoint(struct _packet_info *pinfo, address* addr1, address* addr2,
-    endpoint_type etype, guint32 port1, guint32	port2, const guint options);
+    endpoint_type etype, guint32 port1, guint32	port2);
 
 WS_DLL_PUBLIC void conversation_create_endpoint_by_id(struct _packet_info *pinfo,
-    endpoint_type etype, guint32 id, const guint options);
+    endpoint_type etype, guint32 id);
 
 WS_DLL_PUBLIC guint32 conversation_get_endpoint_by_id(struct _packet_info *pinfo,
     endpoint_type etype, const guint options);
@@ -263,6 +335,14 @@ WS_DLL_PUBLIC wmem_map_t *get_conversation_hashtable_no_addr2(void);
 WS_DLL_PUBLIC wmem_map_t * get_conversation_hashtable_no_port2(void);
 
 WS_DLL_PUBLIC wmem_map_t *get_conversation_hashtable_no_addr2_or_port2(void);
+
+/**
+ * @brief Get a hash table of conversation hash table.
+ *
+ * @return A wmem_map_t * of (const char *: wmem_map_t *).
+ * Each value is a wmem_map_t * of (const conversation_element_t *: void *).
+ */
+WS_DLL_PUBLIC wmem_map_t *get_conversation_hashtables(void);
 
 /* Temporary function to handle port_type to endpoint_type conversion
    For now it's a 1-1 mapping, but the intention is to remove

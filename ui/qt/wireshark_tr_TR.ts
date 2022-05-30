@@ -1838,6 +1838,77 @@ For example, use 1 hour to have a new file created every hour on the hour.</sour
     </message>
 </context>
 <context>
+    <name>ConversationTreeWidget</name>
+    <message>
+        <source>Connection A</source>
+        <translation>Bağlantı A</translation>
+    </message>
+    <message>
+        <source>Connection B</source>
+        <translation>Bağlantı B</translation>
+    </message>
+    <message>
+        <source>Resize all columns to content</source>
+        <translation>Tüm sütunları içeriğe göre yeniden boyutlandır</translation>
+    </message>
+    <message>
+        <source>Address A</source>
+        <translation>Adres A</translation>
+    </message>
+    <message>
+        <source>Port A</source>
+        <translation>Bağlantı noktası A</translation>
+    </message>
+    <message>
+        <source>Address B</source>
+        <translation>Adres B</translation>
+    </message>
+    <message>
+        <source>Port B</source>
+        <translation>Bağlantı noktası B</translation>
+    </message>
+    <message>
+        <source>Packets</source>
+        <translation>Paketler</translation>
+    </message>
+    <message>
+        <source>Bytes</source>
+        <translation>Bayt</translation>
+    </message>
+    <message>
+        <source>Packets A </source>
+        <translation>Paketler A</translation>
+    </message>
+    <message>
+        <source>Bytes A </source>
+        <translation>Bayt A</translation>
+    </message>
+    <message>
+        <source>Packets B </source>
+        <translation>Paketler B</translation>
+    </message>
+    <message>
+        <source>Rel Start</source>
+        <translation>Rel Başlangıç</translation>
+    </message>
+    <message>
+        <source>Duration</source>
+        <translation>Süre</translation>
+    </message>
+    <message>
+        <source>Bits/s A </source>
+        <translation>Bit/s A </translation>
+    </message>
+    <message>
+        <source>Bits/s B </source>
+        <translation>Bit/s B </translation>
+    </message>
+    <message>
+        <source>Abs Start</source>
+        <translation>Abs Başlangıç</translation>
+    </message>
+</context>
+<context>
     <name>CopyFromProfileButton</name>
     <message>
         <source>Copy from</source>
@@ -2339,6 +2410,10 @@ For example, use 1 hour to have a new file created every hour on the hour.</sour
         <translation>Harita dosyası hatası</translation>
     </message>
     <message>
+        <source>Could not open base file %1 for reading: %2</source>
+        <translation>%1 temel dosyası şu okuma için açılamadı: %2</translation>
+    </message>
+    <message>
         <source>No endpoints available to map</source>
         <translation>Haritalanacak uç nokta yok</translation>
     </message>
@@ -2353,6 +2428,65 @@ For example, use 1 hour to have a new file created every hour on the hour.</sour
     <message>
         <source>Failed to save map file %1.</source>
         <translation>%1 harita dosyası kaydedilemedi.</translation>
+    </message>
+</context>
+<context>
+    <name>EndpointTreeWidget</name>
+    <message>
+        <source>Connection</source>
+        <translation>Bağlantı</translation>
+    </message>
+    <message>
+        <source>Resize all columns to content</source>
+        <translation>Tüm sütunları içeriğe göre yeniden boyutlandır</translation>
+    </message>
+    <message>
+        <source>Address</source>
+        <translation>Adres</translation>
+    </message>
+    <message>
+        <source>Port</source>
+        <translation>Bağlantı noktası</translation>
+    </message>
+    <message>
+        <source>Packets</source>
+        <translation>Paketler</translation>
+    </message>
+    <message>
+        <source>Bytes</source>
+        <translation>Bayt</translation>
+    </message>
+    <message>
+        <source>Tx Packets</source>
+        <translation>Tx Paketleri</translation>
+    </message>
+    <message>
+        <source>Tx Bytes</source>
+        <translation>Tx Baytları</translation>
+    </message>
+    <message>
+        <source>Rx Packets</source>
+        <translation>Rx Paketleri</translation>
+    </message>
+    <message>
+        <source>Rx Bytes</source>
+        <translation>Rx Baytları</translation>
+    </message>
+    <message>
+        <source>Country</source>
+        <translation>Ülke</translation>
+    </message>
+    <message>
+        <source>City</source>
+        <translation>Şehir</translation>
+    </message>
+    <message>
+        <source>AS Number</source>
+        <translation>AS Numarası</translation>
+    </message>
+    <message>
+        <source>AS Organization</source>
+        <translation>AS Organizasyonu</translation>
     </message>
 </context>
 <context>
@@ -6964,14 +7098,21 @@ For example, use 1 hour to have a new file created every hour on the hour.</sour
     </message>
 </context>
 <context>
-    <name>PathChooserDelegate</name>
+    <name>PathSelectionDelegate</name>
+    <message>
+        <source>Open a pipe</source>
+        <translation>Boru aç</translation>
+    </message>
+</context>
+<context>
+    <name>PathSelectionEdit</name>
     <message>
         <source>Browse</source>
-        <translation>Göz At</translation>
+        <translation>Gözat</translation>
     </message>
     <message>
-        <source>Open Pipe</source>
-        <translation>Boru Aç</translation>
+        <source>Select a path</source>
+        <translation>Bir yol seçin</translation>
     </message>
 </context>
 <context>

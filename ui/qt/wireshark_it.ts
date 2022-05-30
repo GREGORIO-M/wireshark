@@ -1845,6 +1845,77 @@ Ad esempio, usa 1 ora per fare in modo che un nuovo file sia creato ogni ora.</t
     </message>
 </context>
 <context>
+    <name>ConversationTreeWidget</name>
+    <message>
+        <source>Connection A</source>
+        <translation>Connessione A</translation>
+    </message>
+    <message>
+        <source>Connection B</source>
+        <translation>Connessione B</translation>
+    </message>
+    <message>
+        <source>Resize all columns to content</source>
+        <translation>Ridimensiona tutte le colonne al contenuto</translation>
+    </message>
+    <message>
+        <source>Address A</source>
+        <translation>Indirizzo A</translation>
+    </message>
+    <message>
+        <source>Port A</source>
+        <translation>Porta A</translation>
+    </message>
+    <message>
+        <source>Address B</source>
+        <translation>Indirizzo B</translation>
+    </message>
+    <message>
+        <source>Port B</source>
+        <translation>Porta B</translation>
+    </message>
+    <message>
+        <source>Packets</source>
+        <translation>Pacchetti</translation>
+    </message>
+    <message>
+        <source>Bytes</source>
+        <translation>Byte</translation>
+    </message>
+    <message>
+        <source>Packets A </source>
+        <translation>Pacchetti A</translation>
+    </message>
+    <message>
+        <source>Bytes A </source>
+        <translation>Byte A</translation>
+    </message>
+    <message>
+        <source>Packets B </source>
+        <translation>Pacchetti B</translation>
+    </message>
+    <message>
+        <source>Rel Start</source>
+        <translation>Inizio Rel</translation>
+    </message>
+    <message>
+        <source>Duration</source>
+        <translation>Durata</translation>
+    </message>
+    <message>
+        <source>Bits/s A </source>
+        <translation>Bit/s A</translation>
+    </message>
+    <message>
+        <source>Bits/s B </source>
+        <translation>Bit/s B</translation>
+    </message>
+    <message>
+        <source>Abs Start</source>
+        <translation>Inizio Abs</translation>
+    </message>
+</context>
+<context>
     <name>CopyFromProfileButton</name>
     <message>
         <source>Copy from</source>
@@ -2346,6 +2417,10 @@ Ad esempio, usa 1 ora per fare in modo che un nuovo file sia creato ogni ora.</t
         <translation>Errore nel file di mappa</translation>
     </message>
     <message>
+        <source>Could not open base file %1 for reading: %2</source>
+        <translation>Impossibile aprire il file di base %1 in lettura: %2</translation>
+    </message>
+    <message>
         <source>No endpoints available to map</source>
         <translation>Nessun terminatore disponibile per la mappa</translation>
     </message>
@@ -2360,6 +2435,65 @@ Ad esempio, usa 1 ora per fare in modo che un nuovo file sia creato ogni ora.</t
     <message>
         <source>Failed to save map file %1.</source>
         <translation>Impossibile salvare il file di mappa %1.</translation>
+    </message>
+</context>
+<context>
+    <name>EndpointTreeWidget</name>
+    <message>
+        <source>Connection</source>
+        <translation>Connessione</translation>
+    </message>
+    <message>
+        <source>Resize all columns to content</source>
+        <translation>Ridimensiona tutte le colonne al contenuto</translation>
+    </message>
+    <message>
+        <source>Address</source>
+        <translation>Indirizzo</translation>
+    </message>
+    <message>
+        <source>Port</source>
+        <translation>Porta</translation>
+    </message>
+    <message>
+        <source>Packets</source>
+        <translation>Pacchetti</translation>
+    </message>
+    <message>
+        <source>Bytes</source>
+        <translation>Byte</translation>
+    </message>
+    <message>
+        <source>Tx Packets</source>
+        <translation>Pacchetti trasmessi</translation>
+    </message>
+    <message>
+        <source>Tx Bytes</source>
+        <translation>Byte trasmessi</translation>
+    </message>
+    <message>
+        <source>Rx Packets</source>
+        <translation>Pacchetti ricevuti</translation>
+    </message>
+    <message>
+        <source>Rx Bytes</source>
+        <translation>Byte ricevuti</translation>
+    </message>
+    <message>
+        <source>Country</source>
+        <translation>Nazione</translation>
+    </message>
+    <message>
+        <source>City</source>
+        <translation>Città</translation>
+    </message>
+    <message>
+        <source>AS Number</source>
+        <translation>Numero AS</translation>
+    </message>
+    <message>
+        <source>AS Organization</source>
+        <translation>Organizzazione AS</translation>
     </message>
 </context>
 <context>
@@ -6985,14 +7119,21 @@ Ad esempio, usa 1 ora per fare in modo che un nuovo file sia creato ogni ora.</t
     </message>
 </context>
 <context>
-    <name>PathChooserDelegate</name>
+    <name>PathSelectionDelegate</name>
+    <message>
+        <source>Open a pipe</source>
+        <translation>Apri una pipe</translation>
+    </message>
+</context>
+<context>
+    <name>PathSelectionEdit</name>
     <message>
         <source>Browse</source>
         <translation>Sfoglia</translation>
     </message>
     <message>
-        <source>Open Pipe</source>
-        <translation>Apri pipe</translation>
+        <source>Select a path</source>
+        <translation>Seleziona un percorso</translation>
     </message>
 </context>
 <context>

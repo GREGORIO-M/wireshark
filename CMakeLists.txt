@@ -181,12 +181,13 @@ and CPU target ${WIRESHARK_TARGET_PROCESSOR_ARCHITECTURE}"
 		# Download third-party libraries
 		file (TO_NATIVE_PATH ${CMAKE_SOURCE_DIR}/tools/win-setup.ps1 _win_setup)
 		file (TO_NATIVE_PATH ${_PROJECT_LIB_DIR} _ws_lib_dir)
+		file (TO_NATIVE_PATH ${CMAKE_COMMAND} _win_cmake_command)
 
 		# Is it possible to have a one-time, non-cached option in CMake? If
 		# so, we could add a "-DFORCE_WIN_SETUP" which passes -Force to
 		# win-setup.ps1.
 		execute_process(
-			COMMAND ${POWERSHELL_COMMAND} "\"${_win_setup}\"" -Destination "${_ws_lib_dir}" -Platform ${WIRESHARK_TARGET_PLATFORM}
+			COMMAND ${POWERSHELL_COMMAND} "\"${_win_setup}\"" -Destination "${_ws_lib_dir}" -Platform ${WIRESHARK_TARGET_PLATFORM} -CMakeExecutable "\"${_win_cmake_command}\""
 			RESULT_VARIABLE _win_setup_failed
 			ERROR_VARIABLE _win_setup_error_output
 		)
@@ -656,6 +657,9 @@ else() # ! MSVC
 		# until these procedural issues can be fixed or at least mitigated.
 		#
 		-Wno-error=maybe-uninitialized
+		# Disable errors for another warning that is prone to guesswork
+		# and false positives.
+		-Wno-error=alloc-size-larger-than=
 		#
 		# Converting from g_printf() and g_snprintf() to stdio.h turns
 		# up many of these warnings. They will have to be handled later.
@@ -1394,7 +1398,12 @@ if (QT_FOUND)
 	# Use qmake to find windeployqt and macdeployqt. Ideally one of
 	# the modules in ${QTDIR}/lib/cmake would do this for us.
 	if(WIN32)
-		find_program(QT_WINDEPLOYQT_EXECUTABLE windeployqt
+		if (USE_qt6 AND USE_MSYSTEM)
+			set(_windeployqt_name "windeployqt-qt6")
+		else()
+			set(_windeployqt_name "windeployqt")
+		endif()
+		find_program(QT_WINDEPLOYQT_EXECUTABLE ${_windeployqt_name}
 			HINTS "${QT_BIN_PATH}"
 			DOC "Path to the windeployqt utility."
 		)
@@ -3285,52 +3294,54 @@ if(ENABLE_APPLICATION_BUNDLE AND BUILD_wireshark)
 
 	add_custom_target(path_helper DEPENDS ${install_path_helper_pkg} ${uninstall_path_helper_pkg})
 
-	add_custom_target(app_bundle)
-	set_target_properties(app_bundle PROPERTIES FOLDER "Copy Tasks")
-	add_custom_command(TARGET app_bundle
+	add_custom_target(wireshark_app_bundle)
+	set_target_properties(wireshark_app_bundle PROPERTIES FOLDER "Copy Tasks")
+	add_custom_command(TARGET wireshark_app_bundle
 		POST_BUILD
 		COMMAND "${CMAKE_BINARY_DIR}/packaging/macosx/osx-app.sh"
 		WORKING_DIRECTORY "${CMAKE_BINARY_DIR}/run"
 	)
-	add_dependencies(app_bundle ${PROGLIST} chmodbpf path_helper)
+	add_dependencies(wireshark_app_bundle ${PROGLIST} chmodbpf path_helper)
 
-	add_custom_target(dmg_package_prep DEPENDS app_bundle)
+	add_custom_target(wireshark_dmg_prep DEPENDS wireshark_app_bundle)
 
-	set(_read_me_first "packaging/macosx/Read me first.html")
+	FILE(MAKE_DIRECTORY packaging/macosx/wireshark)
+
+	set(_wireshark_read_me_first "packaging/macosx/wireshark/Read me first.html")
 	ADD_CUSTOM_COMMAND(
 	OUTPUT
-		${_read_me_first}
+		${_wireshark_read_me_first}
 	COMMAND ${ASCIIDOCTOR_EXECUTABLE}
 		--backend html
-		--out-file ${_read_me_first}
+		--out-file ${_wireshark_read_me_first}
 		--attribute include-dir=${CMAKE_SOURCE_DIR}/docbook
 		--attribute min-macos-version=${MIN_MACOS_VERSION}
-		${CMAKE_CURRENT_SOURCE_DIR}/packaging/macosx/Read_me_first.adoc
+		${CMAKE_CURRENT_SOURCE_DIR}/packaging/macosx/Wireshark_read_me_first.adoc
 	DEPENDS
-		${CMAKE_CURRENT_SOURCE_DIR}/packaging/macosx/Read_me_first.adoc
+		${CMAKE_CURRENT_SOURCE_DIR}/packaging/macosx/Wireshark_read_me_first.adoc
 	)
 
-	set(_dsym_installation "packaging/macosx/Debugging symbols installation.html")
+	set(_wireshark_dsym_installation "packaging/macosx/wireshark/Debugging symbols installation.html")
 	ADD_CUSTOM_COMMAND(
 	OUTPUT
-		${_dsym_installation}
+		${_wireshark_dsym_installation}
 	COMMAND ${ASCIIDOCTOR_EXECUTABLE}
 		--backend html
-		--out-file ${_dsym_installation}
+		--out-file ${_wireshark_dsym_installation}
 		--attribute include-dir=${CMAKE_SOURCE_DIR}/docbook
-		${CMAKE_CURRENT_SOURCE_DIR}/packaging/macosx/Debugging_symbols_installation.adoc
+		${CMAKE_CURRENT_SOURCE_DIR}/packaging/macosx/Wireshark_dsym_installation.adoc
 	DEPENDS
-		${CMAKE_CURRENT_SOURCE_DIR}/packaging/macosx/Debugging_symbols_installation.adoc
+		${CMAKE_CURRENT_SOURCE_DIR}/packaging/macosx/Wireshark_dsym_installation.adoc
 	)
 
-	add_custom_target(dmg_package_readmes DEPENDS ${_read_me_first} ${_dsym_installation} )
-	add_dependencies(dmg_package_prep dmg_package_readmes)
+	add_custom_target(wireshark_dmg_readmes DEPENDS ${_wireshark_read_me_first} ${_wireshark_dsym_installation} )
+	add_dependencies(wireshark_dmg_prep wireshark_dmg_readmes)
 
-	ADD_CUSTOM_TARGET( dmg_package
+	ADD_CUSTOM_TARGET( wireshark_dmg
 		COMMAND bash -x ${CMAKE_BINARY_DIR}/packaging/macosx/osx-dmg.sh
 		# Unlike nsis_package_prep + nsis_package, we can add a direct
 		# dependency here.
-		DEPENDS dmg_package_prep
+		DEPENDS wireshark_dmg_prep
 		# We create Wireshark.app in "run". Do our work there.
 		WORKING_DIRECTORY ${CMAKE_BINARY_DIR}/run
 	)
@@ -3346,29 +3357,45 @@ if(ENABLE_APPLICATION_BUNDLE AND BUILD_logwolf)
 		WORKING_DIRECTORY "${CMAKE_BINARY_DIR}/run"
 	)
 
-	# add_custom_target(dmg_package_prep DEPENDS app_bundle)
+	add_custom_target(logwolf_dmg_prep DEPENDS logwolf_app_bundle)
 
-	# set(_read_me_first "packaging/macosx/Read me first.html")
-	# ADD_CUSTOM_COMMAND(
-	# OUTPUT
-	# 	${_read_me_first}
-	# COMMAND ${ASCIIDOCTOR_EXECUTABLE}
-	# 	--backend html
-	# 	--out-file ${_read_me_first}
-	# 	--attribute include-dir=${CMAKE_SOURCE_DIR}/docbook
-	# 	--attribute min-macos-version=${MIN_MACOS_VERSION}
-	# 	${CMAKE_CURRENT_SOURCE_DIR}/packaging/macosx/Read_me_first.adoc
-	# DEPENDS
-	# 	${CMAKE_CURRENT_SOURCE_DIR}/packaging/macosx/Read_me_first.adoc
-	# )
-	# add_custom_target(read_me_first_html DEPENDS ${_read_me_first} )
-	# add_dependencies(dmg_package_prep read_me_first_html)
+	FILE(MAKE_DIRECTORY packaging/macosx/logwolf)
 
-	# ADD_CUSTOM_TARGET( dmg_package
+	set(_logwolf_read_me_first "packaging/macosx/logwolf/Read me first.html")
+	ADD_CUSTOM_COMMAND(
+	OUTPUT
+		${_logwolf_read_me_first}
+	COMMAND ${ASCIIDOCTOR_EXECUTABLE}
+		--backend html
+		--out-file ${_logwolf_read_me_first}
+		--attribute include-dir=${CMAKE_SOURCE_DIR}/docbook
+		--attribute min-macos-version=${MIN_MACOS_VERSION}
+		${CMAKE_CURRENT_SOURCE_DIR}/packaging/macosx/Logwolf_read_me_first.adoc
+	DEPENDS
+		${CMAKE_CURRENT_SOURCE_DIR}/packaging/macosx/Logwolf_read_me_first.adoc
+	)
+
+	set(_logwolf_dsym_installation "packaging/macosx/logwolf/Debugging symbols installation.html")
+	ADD_CUSTOM_COMMAND(
+	OUTPUT
+		${_logwolf_dsym_installation}
+	COMMAND ${ASCIIDOCTOR_EXECUTABLE}
+		--backend html
+		--out-file ${_logwolf_dsym_installation}
+		--attribute include-dir=${CMAKE_SOURCE_DIR}/docbook
+		${CMAKE_CURRENT_SOURCE_DIR}/packaging/macosx/Logwolf_dsym_installation.adoc
+	DEPENDS
+		${CMAKE_CURRENT_SOURCE_DIR}/packaging/macosx/Logwolf_dsym_installation.adoc
+	)
+
+	add_custom_target(logwolf_dmg_readmes DEPENDS ${_logwolf_read_me_first} ${_logwolf_dsym_installation} )
+	add_dependencies(logwolf_dmg_prep logwolf_dmg_readmes)
+
+	# ADD_CUSTOM_TARGET( logwolf_dmg
 	# 	COMMAND bash -x ${CMAKE_BINARY_DIR}/packaging/macosx/osx-dmg.sh
 	# 	# Unlike nsis_package_prep + nsis_package, we can add a direct
 	# 	# dependency here.
-	# 	DEPENDS dmg_package_prep
+	# 	DEPENDS wireshark_dmg_prep
 	# 	# We create Wireshark.app in "run". Do our work there.
 	# 	WORKING_DIRECTORY ${CMAKE_BINARY_DIR}/run
 	# )

@@ -1,27 +1,40 @@
 /* common.c */
 /*
-License of Lrexlib release
---------------------------
+ * Copyright (C) Reuben Thomas 2000-2020
+ * Copyright (C) Shmuel Zeigerman 2004-2020
 
-Copyright (C) Reuben Thomas 2000-2012
-Copyright (C) Shmuel Zeigerman 2004-2012
+ * Permission is hereby granted, free of charge, to any person
+ * obtaining a copy of this software and associated
+ * documentation files (the "Software"), to deal in the
+ * Software without restriction, including without limitation
+ * the rights to use, copy, modify, merge, publish, distribute,
+ * sublicense, and/or sell copies of the Software, and to
+ * permit persons to whom the Software is furnished to do so,
+ * subject to the following conditions:
 
-SPDX-License-Identifier: MIT
-*/
+ * The above copyright notice and this permission notice shall
+ * be included in all copies or substantial portions of the
+ * Software.
 
-/*
- * Modified to use the g_ascii_isXXX() routines instead of
- * the ctype.h isXXX() routines, to avoid locale dependency
- * and to handle possibly-signed chars.
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY
+ * KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE
+ * WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR
+ * PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS
+ * OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR
+ * OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR
+ * OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
+ * SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-#include <stdlib.h>
-#include <string.h>
-#include <glib.h>
+#include <wireshark.h>
+DIAG_OFF_CLANG(shorten-64-to-32)
 
+#include <stdlib.h>
+#include <ctype.h>
+#include <string.h>
 #include "lua.h"
 #include "lauxlib.h"
-#include "lrexlib.h"
+#include "common.h"
 
 #define N_ALIGN sizeof(int)
 
@@ -30,7 +43,7 @@ int get_int_field (lua_State *L, const char* field)
 {
   int val;
   lua_getfield (L, -1, field);
-  val = (int) lua_tointeger (L, -1);
+  val = lua_tointeger (L, -1);
   lua_pop (L, 1);
   return val;
 }
@@ -141,11 +154,10 @@ void freelist_free (TFreeList *fl) {
 enum { ID_NUMBER, ID_STRING };
 
 void buffer_init (TBuffer *buf, size_t sz, lua_State *L, TFreeList *fl) {
-  buf->arr = (char *)Lmalloc(L, sz);
+  buf->arr = (char*) Lmalloc(L, sz);
   if (!buf->arr) {
     freelist_free (fl);
     luaL_error (L, "malloc failed");
-    return;
   }
   buf->size = sz;
   buf->top = 0;
@@ -177,7 +189,6 @@ void buffer_addlstring (TBuffer *buf, const void *src, size_t sz) {
     if (!p) {
       freelist_free (buf->freelist);
       luaL_error (buf->L, "realloc failed");
-      return;
     }
     buf->arr = p;
     buf->size = 2 * newtop;
@@ -199,7 +210,7 @@ void bufferZ_addlstring (TBuffer *buf, const void *src, size_t len) {
   header[1] = len;
   buffer_addlstring (buf, header, sizeof (header));
   buffer_addlstring (buf, src, len);
-  n = (int)(len % N_ALIGN);
+  n = len % N_ALIGN;
   if (n) buffer_addlstring (buf, NULL, N_ALIGN - n);
 }
 
@@ -230,13 +241,12 @@ void bufferZ_putrepstring (TBuffer *BufRep, int reppos, int nsub) {
         if (g_ascii_isdigit (*q)) {
           int num;
           *dbuf = *q;
-          num = (int) strtol (dbuf, NULL, 10);
+          num = strtol (dbuf, NULL, 10);
           if (num == 1 && nsub == 0)
             num = 0;
           else if (num > nsub) {
             freelist_free (BufRep->freelist);
             luaL_error (BufRep->L, "invalid capture index");
-            return;
           }
           bufferZ_addnum (BufRep, num);
         }
@@ -259,7 +269,7 @@ void bufferZ_putrepstring (TBuffer *BufRep, int reppos, int nsub) {
 */
 int bufferZ_next (TBuffer *buf, size_t *iter, size_t *num, const char **str) {
   if (*iter < buf->top) {
-    size_t *ptr_header = (size_t*)(void*)(buf->arr + *iter);
+    size_t *ptr_header = (size_t*)(buf->arr + *iter);
     *num = ptr_header[1];
     *iter += 2 * sizeof (size_t);
     *str = NULL;
@@ -267,7 +277,7 @@ int bufferZ_next (TBuffer *buf, size_t *iter, size_t *num, const char **str) {
       int n;
       *str = buf->arr + *iter;
       *iter += *num;
-      n = (int)(*iter % N_ALIGN);
+      n = *iter % N_ALIGN;
       if (n) *iter += (N_ALIGN - n);
     }
     return 1;
@@ -282,3 +292,32 @@ int luaL_typerror (lua_State *L, int narg, const char *tname) {
   return luaL_argerror(L, narg, msg);
 }
 #endif
+
+#ifndef REX_NOEMBEDDEDTEST
+static int ud_topointer (lua_State *L) {
+  lua_pushlightuserdata (L, lua_touserdata (L, 1));
+  return 1;
+}
+
+static int ud_len (lua_State *L) {
+  lua_pushinteger (L, lua_objlen (L, 1));
+  return 1;
+}
+
+/* for testing purposes only */
+int newmembuffer (lua_State *L) {
+  size_t len;
+  const char* s = luaL_checklstring (L, 1, &len);
+  void *ud = lua_newuserdata (L, len);
+  memcpy (ud, s, len);
+  lua_newtable (L); /* metatable */
+  lua_pushvalue (L, -1);
+  lua_setfield (L, -2, "__index"); /* metatable.__index = metatable */
+  lua_pushcfunction (L, ud_topointer);
+  lua_setfield (L, -2, "topointer");
+  lua_pushcfunction (L, ud_len);
+  lua_setfield (L, -2, "__len");
+  lua_setmetatable (L, -2);
+  return 1;
+}
+#endif /* #ifndef REX_NOEMBEDDEDTEST */
