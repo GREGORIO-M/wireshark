@@ -47,7 +47,7 @@ signals:
     void filterChanged(const QString filter);
 
 private slots:
-    void linkTypeChanged(QString selected_link_type);
+    void linkTypeChanged(const QString selected_link_type);
     void snapshotLengthChanged(int value);
     void bufferSizeChanged(int value);
 };
@@ -61,6 +61,9 @@ public:
     ~CaptureOptionsDialog();
 
     void updateInterfaces();
+
+public slots:
+    void interfaceSelected();
 
 protected:
     virtual void showEvent(QShowEvent *);
@@ -80,7 +83,6 @@ private slots:
     void on_buttonBox_accepted();
     void on_buttonBox_rejected();
     void on_buttonBox_helpRequested();
-    void interfaceSelected();
     void filterEdited();
     void updateWidgets();
     void updateStatistics(void);
@@ -89,7 +91,7 @@ private slots:
     void browseButtonClicked();
     void interfaceItemChanged(QTreeWidgetItem *item, int column);
     void itemClicked(QTreeWidgetItem *item, int column);
-    void itemDoubleClicked(QTreeWidgetItem *item);
+    void itemDoubleClicked(QTreeWidgetItem *item, int column);
     void changeEvent(QEvent* event);
     void tempDirBrowseButtonClicked();
 

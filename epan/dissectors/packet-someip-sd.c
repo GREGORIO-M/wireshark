@@ -451,11 +451,13 @@ dissect_someip_sd_pdu_option_unknown(tvbuff_t *tvb, packet_info *pinfo, proto_tr
 }
 
 static int
-dissect_someip_sd_pdu_options(tvbuff_t *tvb, packet_info *pinfo, proto_tree *tree, proto_item *ti, guint32 offset, guint32 length) {
+dissect_someip_sd_pdu_options(tvbuff_t *tvb, packet_info *pinfo, proto_tree *tree, proto_item *ti, guint32 offset_orig, guint32 length) {
     guint16             real_length = 0;
     guint8              option_type = 0;
     int                 optionnum = 0;
     tvbuff_t           *subtvb = NULL;
+
+    guint32             offset = offset_orig;
 
     if (!tvb_bytes_exist(tvb, offset, SD_OPTION_MINLENGTH) || !tvb_bytes_exist(tvb, offset, length)) {
         expert_add_info(pinfo, ti, &ef_someipsd_option_array_truncated);
@@ -466,7 +468,7 @@ dissect_someip_sd_pdu_options(tvbuff_t *tvb, packet_info *pinfo, proto_tree *tre
         real_length = tvb_get_ntohs(tvb, offset) + 3;
         option_type = tvb_get_guint8(tvb, offset + 2);
 
-        if (!tvb_bytes_exist(tvb, offset, (gint)real_length)) {
+        if (!tvb_bytes_exist(tvb, offset, (gint)real_length) || offset - offset_orig + real_length > length) {
             expert_add_info(pinfo, ti, &ef_someipsd_option_array_truncated);
             return offset;
         }
@@ -668,9 +670,7 @@ dissect_someip_sd_pdu_entry(tvbuff_t *tvb, packet_info *pinfo, proto_tree *tree,
         }
     }
 
-    if (ti != NULL) {
-        PROTO_ITEM_SET_HIDDEN(ti);
-    }
+    proto_item_set_hidden(ti);
 
     /* TAP */
     if (have_tap_listener(tap_someip_sd_entries)) {
@@ -907,7 +907,7 @@ stat_create_entry_summary_string(const someip_sd_entries_tap_t *data, gchar *ret
 }
 
 static tap_packet_status
-someipsd_entries_stats_tree_packet(stats_tree *st, packet_info *pinfo, epan_dissect_t *edt _U_, const void *p) {
+someipsd_entries_stats_tree_packet(stats_tree *st, packet_info *pinfo, epan_dissect_t *edt _U_, const void *p, tap_flags_t flags _U_) {
     DISSECTOR_ASSERT(p);
     const someip_sd_entries_tap_t *data = (const someip_sd_entries_tap_t *)p;
     static gchar tmp_addr_str[256];

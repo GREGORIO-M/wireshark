@@ -38,7 +38,6 @@
 #include "packet-frame.h"
 #include "packet-icmp.h"
 
-#include <epan/column-info.h>
 #include <epan/color_filters.h>
 
 void proto_register_frame(void);
@@ -66,6 +65,8 @@ static int hf_frame_marked = -1;
 static int hf_frame_ignored = -1;
 static int hf_link_number = -1;
 static int hf_frame_packet_id = -1;
+static int hf_frame_hash = -1;
+static int hf_frame_hash_bytes = -1;
 static int hf_frame_verdict = -1;
 static int hf_frame_verdict_hardware = -1;
 static int hf_frame_verdict_tc = -1;
@@ -108,6 +109,7 @@ static gint ett_frame = -1;
 static gint ett_ifname = -1;
 static gint ett_flags = -1;
 static gint ett_comments = -1;
+static gint ett_hash = -1;
 static gint ett_verdict = -1;
 static gint ett_bblog = -1;
 static gint ett_pcaplog_data = -1;
@@ -115,6 +117,7 @@ static gint ett_pcaplog_data = -1;
 static expert_field ei_comments_text = EI_INIT;
 static expert_field ei_arrive_time_out_of_range = EI_INIT;
 static expert_field ei_incomplete = EI_INIT;
+static expert_field ei_len_lt_caplen = EI_INIT;
 
 static int frame_tap = -1;
 
@@ -189,6 +192,14 @@ static dissector_table_t wtap_fts_rec_dissector_table;
 #define OPT_VERDICT_TYPE_TC  1
 #define OPT_VERDICT_TYPE_XDP 2
 
+/* OPT_EPB_HASH sub-types */
+#define OPT_HASH_2COMP    0
+#define OPT_HASH_XOR	  1
+#define OPT_HASH_CRC32    2
+#define OPT_HASH_MD5      3
+#define OPT_HASH_SHA1     4
+#define OPT_HASH_TOEPLITZ 5
+
 /* Structure for passing as userdata to wtap_block_foreach_option */
 typedef struct fr_foreach_s {
 	proto_item *item;
@@ -212,6 +223,27 @@ get_verdict_type_string(guint8 type)
 	return "Unknown";
 }
 
+static const char *
+get_hash_type_string(guint8 type)
+{
+	switch(type) {
+	case OPT_HASH_2COMP:
+		return "2's Complement";
+	case OPT_HASH_XOR:
+		return "XOR";
+	case OPT_HASH_CRC32:
+		return "CRC32";
+	case OPT_HASH_MD5:
+		return "MD5";
+	case OPT_HASH_SHA1:
+		return "SHA1";
+	case OPT_HASH_TOEPLITZ:
+		return "Toeplitz";
+	default:
+		return "Unknown";
+	}
+}
+
 static void
 ensure_tree_item(proto_tree *tree, guint count)
 {
@@ -228,7 +260,7 @@ ensure_tree_item(proto_tree *tree, guint count)
 /* whenever a frame packet is seen by the tap listener */
 /* Add a new frame into the graph */
 static tap_packet_status
-frame_seq_analysis_packet( void *ptr, packet_info *pinfo, epan_dissect_t *edt _U_, const void *dummy _U_)
+frame_seq_analysis_packet( void *ptr, packet_info *pinfo, epan_dissect_t *edt _U_, const void *dummy _U_, tap_flags_t flags _U_)
 {
 	seq_analysis_info_t *sainfo = (seq_analysis_info_t *) ptr;
 	seq_analysis_item_t *sai = sequence_analysis_create_sai_with_addresses(pinfo, sainfo);
@@ -293,50 +325,68 @@ frame_add_comment(wtap_block_t block _U_, guint option_id, wtap_opttype_e option
 }
 
 static gboolean
+frame_add_hash(wtap_block_t block _U_, guint option_id, wtap_opttype_e option_type _U_, wtap_optval_t *option, void *user_data)
+{
+	fr_foreach_t *fr_user_data = (fr_foreach_t *)user_data;
+
+	if (option_id == OPT_PKT_HASH) {
+		packet_hash_opt_t *hash = &option->packet_hash;
+		const char *format
+			= fr_user_data->n_changes ? "%s (%u)" : ", %s (%u)";
+
+		proto_item_append_text(fr_user_data->item, format,
+				       get_hash_type_string(hash->type),
+				       hash->type);
+
+		proto_tree_add_bytes_with_length(fr_user_data->tree,
+						 hf_frame_hash_bytes,
+						 fr_user_data->tvb, 0, 0,
+						 hash->hash_bytes->data,
+						 hash->hash_bytes->len);
+	}
+	fr_user_data->n_changes++;
+	return TRUE;
+}
+
+static gboolean
 frame_add_verdict(wtap_block_t block _U_, guint option_id, wtap_opttype_e option_type _U_, wtap_optval_t *option, void *user_data)
 {
 	fr_foreach_t *fr_user_data = (fr_foreach_t *)user_data;
 
 	if (option_id == OPT_PKT_VERDICT) {
-		GBytes *verdict = option->byteval;
-		const guint8 *verdict_data;
-		gsize len;
+		packet_verdict_opt_t *verdict = &option->packet_verdictval;
 		char *format = fr_user_data->n_changes ? ", %s (%u)" : "%s (%u)";
 
-		if (verdict == NULL)
-			return TRUE;
-
-		verdict_data = (const guint8 *) g_bytes_get_data(verdict, &len);
-
-		if (len == 0)
-			return TRUE;
-
 		proto_item_append_text(fr_user_data->item, format,
-			 get_verdict_type_string(verdict_data[0]), verdict_data[0]);
+				       get_verdict_type_string(verdict->type),
+				       verdict->type);
 
-		len -= 1;
-		switch(verdict_data[0]) {
-			case OPT_VERDICT_TYPE_HW:
-				proto_tree_add_bytes_with_length(fr_user_data->tree, hf_frame_verdict_hardware,
-						fr_user_data->tvb, 0, 0, verdict_data + 1, (gint) len);
-				break;
+		switch(verdict->type) {
 			case OPT_VERDICT_TYPE_TC:
-				if (len == 8) {
-					gint64 val;
-					memcpy(&val, verdict_data + 1, sizeof(val));
-					proto_tree_add_int64(fr_user_data->tree, hf_frame_verdict_tc, fr_user_data->tvb, 0, 0, val);
-				}
+				proto_tree_add_int64(fr_user_data->tree,
+						     hf_frame_verdict_tc,
+						     fr_user_data->tvb, 0, 0,
+						     verdict->data.verdict_linux_ebpf_tc);
 				break;
 			case OPT_VERDICT_TYPE_XDP:
-				if (len == 8) {
-					gint64 val;
-					memcpy(&val, verdict_data + 1, sizeof(val));
-					proto_tree_add_int64(fr_user_data->tree, hf_frame_verdict_xdp, fr_user_data->tvb, 0, 0, val);
-				}
+				proto_tree_add_int64(fr_user_data->tree,
+						     hf_frame_verdict_xdp,
+						     fr_user_data->tvb, 0, 0,
+						     verdict->data.verdict_linux_ebpf_xdp);
+				break;
+			case OPT_VERDICT_TYPE_HW:
+				proto_tree_add_bytes_with_length(fr_user_data->tree,
+								 hf_frame_verdict_hardware,
+								 fr_user_data->tvb, 0, 0,
+								 verdict->data.verdict_bytes->data,
+								 verdict->data.verdict_bytes->len);
 				break;
 			default:
-				proto_tree_add_bytes_with_length(fr_user_data->tree, hf_frame_verdict_unknown,
-						fr_user_data->tvb, 0, 0, verdict_data, (gint) len + 1);
+				proto_tree_add_bytes_with_length(fr_user_data->tree,
+								 hf_frame_verdict_unknown,
+								 fr_user_data->tvb, 0, 0,
+								 verdict->data.verdict_bytes->data,
+								 verdict->data.verdict_bytes->len);
 				break;
 		}
 	}
@@ -526,19 +576,42 @@ dissect_frame(tvbuff_t *tvb, packet_info *pinfo, proto_tree *parent_tree, void* 
 		wtap_block_foreach_option(fr_data->pkt_block, frame_add_comment, (void *)&fr_user_data);
 	}
 
-	/* if FRAME is not referenced from any filters we don't need to worry about
-	   generating any tree items.  */
+	cap_len = tvb_captured_length(tvb);
+	frame_len = tvb_reported_length(tvb);
+
+	/* If FRAME is not referenced from any filters we don't need to
+	   worry about generating any tree items.
+
+	   We do, however, have to worry about generating expert infos,
+	   as those have to show up if, for example, the user requests
+	   the expert info dialog.
+
+	   NOTE: if any expert infos are added in the "frame is referenced"
+	   arm of the conditional, they must also be added to the "frame
+	   is not referenced" arm.  See, for example, issue #18312.
+
+	   XXX - all these tricks to optimize dissection if only some
+	   information is required are fragile.  Something better that
+	   handles this automatically would be useful. */
 	if (!proto_field_is_referenced(tree, proto_frame)) {
 		tree=NULL;
 		if (pinfo->presence_flags & PINFO_HAS_TS) {
 			if (pinfo->abs_ts.nsecs < 0 || pinfo->abs_ts.nsecs >= 1000000000)
-				expert_add_info(pinfo, NULL, &ei_arrive_time_out_of_range);
+				expert_add_info_format(pinfo, NULL, &ei_arrive_time_out_of_range,
+								    "Arrival Time: Fractional second %09ld is invalid,"
+								    " the valid range is 0-1000000000",
+								    (long) pinfo->abs_ts.nsecs);
+		}
+		if (frame_len < cap_len) {
+			/*
+			 * A reported length less than a captured length
+			 * is bogus, as you cannot capture more data
+			 * than there is in a packet.
+			 */
+			expert_add_info(pinfo, NULL, &ei_len_lt_caplen);
 		}
 	} else {
 		/* Put in frame header information. */
-		cap_len = tvb_captured_length(tvb);
-		frame_len = tvb_reported_length(tvb);
-
 		cap_plurality = plurality(cap_len, "", "s");
 		frame_plurality = plurality(frame_len, "", "s");
 
@@ -697,6 +770,21 @@ dissect_frame(tvbuff_t *tvb, packet_info *pinfo, proto_tree *parent_tree, void* 
 		if (WTAP_OPTTYPE_SUCCESS == wtap_block_get_uint32_option_value(fr_data->pkt_block, OPT_PKT_QUEUE, &interface_queue)) {
 			proto_tree_add_uint(fh_tree, hf_frame_interface_queue, tvb, 0, 0, interface_queue);
 		}
+
+		if (wtap_block_count_option(fr_data->pkt_block, OPT_PKT_HASH) > 0) {
+			proto_tree *hash_tree;
+			proto_item *hash_item;
+
+			hash_item = proto_tree_add_string(fh_tree, hf_frame_hash, tvb, 0, 0, "");
+			hash_tree = proto_item_add_subtree(hash_item, ett_hash);
+			fr_user_data.item = hash_item;
+			fr_user_data.tree = hash_tree;
+			fr_user_data.pinfo = pinfo;
+			fr_user_data.tvb = tvb;
+			fr_user_data.n_changes = 0;
+			wtap_block_foreach_option(fr_data->pkt_block, frame_add_hash, (void *)&fr_user_data);
+		}
+
 		if (WTAP_OPTTYPE_SUCCESS == wtap_block_get_uint32_option_value(fr_data->pkt_block, OPT_PKT_FLAGS, &pack_flags)) {
 			proto_tree *flags_tree;
 			proto_item *flags_item;
@@ -793,9 +881,17 @@ dissect_frame(tvbuff_t *tvb, packet_info *pinfo, proto_tree *parent_tree, void* 
 		proto_tree_add_uint(fh_tree, hf_frame_number, tvb,
 				    0, 0, pinfo->num);
 
-		proto_tree_add_uint_format(fh_tree, hf_frame_len, tvb,
-					   0, 0, frame_len, "Frame Length: %u byte%s (%u bits)",
-					   frame_len, frame_plurality, frame_len * 8);
+		item = proto_tree_add_uint_format(fh_tree, hf_frame_len, tvb,
+						  0, 0, frame_len, "Frame Length: %u byte%s (%u bits)",
+						  frame_len, frame_plurality, frame_len * 8);
+		if (frame_len < cap_len) {
+			/*
+			 * A reported length less than a captured length
+			 * is bogus, as you cannot capture more data
+			 * than there is in a packet.
+			 */
+			expert_add_info(pinfo, item, &ei_len_lt_caplen);
+		}
 
 		proto_tree_add_uint_format(fh_tree, hf_frame_capture_len, tvb,
 					   0, 0, cap_len, "Capture Length: %u byte%s (%u bits)",
@@ -861,6 +957,15 @@ dissect_frame(tvbuff_t *tvb, packet_info *pinfo, proto_tree *parent_tree, void* 
 		col_set_str(pinfo->cinfo, COL_INFO, "<Ignored>");
 		proto_tree_add_boolean_format(tree, hf_frame_ignored, tvb, 0, 0, TRUE, "This frame is marked as ignored");
 		return tvb_captured_length(tvb);
+	}
+
+	if (frame_len < cap_len) {
+		/*
+		 * Fix the reported length; a reported length less than
+		 * a captured length is bogus, as you cannot capture
+		 * more data than there is in a packet.
+		 */
+		tvb_fix_reported_length(tvb);
 	}
 
 	/* Portable Exception Handling to trap Wireshark specific exceptions like BoundsError exceptions */
@@ -1380,6 +1485,16 @@ proto_register_frame(void)
 		    FT_UINT64, BASE_DEC, NULL, 0x0,
 		    NULL, HFILL }},
 
+		{ &hf_frame_hash,
+		  { "Hash Algorithm", "frame.hash",
+		    FT_STRING, BASE_NONE, NULL, 0x0,
+		    NULL, HFILL }},
+
+		{ &hf_frame_hash_bytes,
+		  { "Hash Value", "frame.hash.value",
+		    FT_BYTES, SEP_SPACE, NULL, 0x0,
+		    NULL, HFILL }},
+
 		{ &hf_frame_verdict,
 		  { "Verdict", "frame.verdict",
 		    FT_STRING, BASE_NONE, NULL, 0x0,
@@ -1464,6 +1579,7 @@ proto_register_frame(void)
 		&ett_ifname,
 		&ett_flags,
 		&ett_comments,
+		&ett_hash,
 		&ett_verdict,
 		&ett_bblog,
 		&ett_pcaplog_data
@@ -1472,7 +1588,8 @@ proto_register_frame(void)
 	static ei_register_info ei[] = {
 		{ &ei_comments_text, { "frame.comment.expert", PI_COMMENTS_GROUP, PI_COMMENT, "Formatted comment", EXPFILL }},
 		{ &ei_arrive_time_out_of_range, { "frame.time_invalid", PI_SEQUENCE, PI_NOTE, "Arrival Time: Fractional second out of range (0-1000000000)", EXPFILL }},
-		{ &ei_incomplete, { "frame.incomplete", PI_UNDECODED, PI_NOTE, "Incomplete dissector", EXPFILL }}
+		{ &ei_incomplete, { "frame.incomplete", PI_UNDECODED, PI_NOTE, "Incomplete dissector", EXPFILL }},
+		{ &ei_len_lt_caplen, { "frame.len_lt_caplen", PI_MALFORMED, PI_ERROR, "Frame length is less than captured length", EXPFILL }}
 	};
 
 	module_t *frame_module;

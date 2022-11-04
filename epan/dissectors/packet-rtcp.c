@@ -934,14 +934,14 @@ void srtcp_add_address( packet_info *pinfo,
      * Check if the ip address and port combination is not
      * already registered as a conversation.
      */
-    p_conv = find_conversation( pinfo->num, addr, &null_addr, ENDPOINT_UDP, port, other_port,
+    p_conv = find_conversation( setup_frame_number, addr, &null_addr, CONVERSATION_UDP, port, other_port,
                                 NO_ADDR_B | (!other_port ? NO_PORT_B : 0));
 
     /*
      * If not, create a new conversation.
      */
     if ( ! p_conv ) {
-        p_conv = conversation_new( pinfo->num, addr, &null_addr, ENDPOINT_UDP,
+        p_conv = conversation_new( setup_frame_number, addr, &null_addr, CONVERSATION_UDP,
                                    (guint32)port, (guint32)other_port,
                                    NO_ADDR2 | (!other_port ? NO_PORT2 : 0));
     }
@@ -987,6 +987,9 @@ dissect_rtcp_heur( tvbuff_t *tvb, packet_info *pinfo, proto_tree *tree, void *da
     unsigned int offset = 0;
     unsigned int first_byte;
     unsigned int packet_type;
+
+    if (tvb_captured_length(tvb) < 2)
+        return FALSE;
 
     /* Look at first byte */
     first_byte = tvb_get_guint8(tvb, offset);
@@ -2547,12 +2550,8 @@ dissect_rtcp_app_mcpt(tvbuff_t* tvb, packet_info* pinfo, int offset, proto_tree*
                     break;
                 }
                 /* Reject Phrase */
-                proto_tree_add_item(sub_tree, hf_rtcp_sdes_type, tvb, offset, 1, ENC_BIG_ENDIAN);
-                offset += 1;
-                proto_tree_add_item(sub_tree, hf_rtcp_sdes_length, tvb, offset, 1, ENC_BIG_ENDIAN);
-                offset += 1;
-                proto_tree_add_item(sub_tree, hf_rtcp_mcptt_rej_phrase, tvb, offset, mcptt_fld_len - 4, ENC_UTF_8 | ENC_NA);
-                offset += (mcptt_fld_len - 4);
+                proto_tree_add_item(sub_tree, hf_rtcp_mcptt_rej_phrase, tvb, offset, mcptt_fld_len - 2, ENC_UTF_8 | ENC_NA);
+                offset += (mcptt_fld_len - 2);
                 break;
             }
             case 3:
@@ -2610,9 +2609,19 @@ dissect_rtcp_app_mcpt(tvbuff_t* tvb, packet_info* pinfo, int offset, proto_tree*
                 proto_tree_add_item_ret_uint(sub_tree, hf_rtcp_mcptt_part_type_len, tvb, offset, 1, ENC_BIG_ENDIAN, &fld_len);
                 offset += 1;
                 rem_len -= 1;
+                int part_type_padding = (4 - (fld_len % 4));
                 proto_tree_add_item(sub_tree, hf_rtcp_mcptt_participant_type, tvb, offset, fld_len, ENC_UTF_8 | ENC_NA);
                 offset += fld_len;
                 rem_len -= fld_len;
+                if(part_type_padding > 0){
+                    guint32 data;
+                    proto_tree_add_item_ret_uint(sub_tree, hf_rtcp_app_data_padding, tvb, offset, part_type_padding, ENC_BIG_ENDIAN, &data);
+                    if (data != 0) {
+                        proto_tree_add_expert(sub_tree, pinfo, &ei_rtcp_appl_non_zero_pad, tvb, offset, part_type_padding);
+                    }
+                    offset += part_type_padding;
+                    rem_len -= part_type_padding;
+                }
                 if (rem_len > 0) {
                     num_ref = 1;
                     /* Floor Participant Reference */
@@ -4035,7 +4044,7 @@ void show_setup_info(tvbuff_t *tvb, packet_info *pinfo, proto_tree *tree)
         conversation_t *p_conv;
         /* First time, get info from conversation */
         p_conv = find_conversation(pinfo->num, &pinfo->net_dst, &pinfo->net_src,
-                                   conversation_pt_to_endpoint_type(pinfo->ptype),
+                                   conversation_pt_to_conversation_type(pinfo->ptype),
                                    pinfo->destport, pinfo->srcport, NO_ADDR_B);
 
         if (p_conv)
@@ -4113,13 +4122,13 @@ static void remember_outgoing_sr(packet_info *pinfo, guint32 lsr)
        Even though we think of this as an outgoing packet being sent,
        we store the time as being received by the destination. */
     p_conv = find_conversation(pinfo->num, &pinfo->net_dst, &pinfo->net_src,
-                               conversation_pt_to_endpoint_type(pinfo->ptype),
+                               conversation_pt_to_conversation_type(pinfo->ptype),
                                pinfo->destport, pinfo->srcport, NO_ADDR_B);
 
     /* If the conversation doesn't exist, create it now. */
     if (!p_conv)
     {
-        p_conv = conversation_new(pinfo->num, &pinfo->net_dst, &pinfo->net_src, ENDPOINT_UDP,
+        p_conv = conversation_new(pinfo->num, &pinfo->net_dst, &pinfo->net_src, CONVERSATION_UDP,
                                   pinfo->destport, pinfo->srcport,
                                   NO_ADDR2);
         if (!p_conv)
@@ -4205,7 +4214,7 @@ static void calculate_roundtrip_delay(tvbuff_t *tvb, packet_info *pinfo,
     /* Look for captured timestamp of last SR in conversation of sender */
     /* of this packet                                                   */
     p_conv = find_conversation(pinfo->num, &pinfo->net_src, &pinfo->net_dst,
-                               conversation_pt_to_endpoint_type(pinfo->ptype),
+                               conversation_pt_to_conversation_type(pinfo->ptype),
                                pinfo->srcport, pinfo->destport, NO_ADDR_B);
     if (!p_conv)
     {
@@ -4389,7 +4398,7 @@ dissect_rtcp_common( tvbuff_t *tvb, packet_info *pinfo, proto_tree *tree, void* 
 
     /* first see if this conversation is encrypted SRTP, and if so do not try to dissect the payload(s) */
     p_conv = find_conversation(pinfo->num, &pinfo->net_src, &pinfo->net_dst,
-                               conversation_pt_to_endpoint_type(pinfo->ptype),
+                               conversation_pt_to_conversation_type(pinfo->ptype),
                                pinfo->srcport, pinfo->destport, NO_ADDR_B);
     if (p_conv)
     {

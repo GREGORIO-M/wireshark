@@ -85,7 +85,7 @@ ipv6_to_repr(wmem_allocator_t *scope, const fvalue_t *fv, ftrepr_t rtype _U_, in
 	return ip6_to_str(scope, &(fv->value.ipv6.addr));
 }
 
-static gpointer
+static const guint8 *
 value_get(fvalue_t *fv)
 {
 	return fv->value.ipv6.addr.bytes;
@@ -94,8 +94,8 @@ value_get(fvalue_t *fv)
 static const guint8 bitmasks[9] =
 	{ 0x00, 0x80, 0xc0, 0xe0, 0xf0, 0xf8, 0xfc, 0xfe, 0xff };
 
-static int
-cmp_order(const fvalue_t *fv_a, const fvalue_t *fv_b)
+static enum ft_result
+cmp_order(const fvalue_t *fv_a, const fvalue_t *fv_b, int *cmp)
 {
 	const ipv6_addr_and_prefix *a = &(fv_a->value.ipv6);
 	const ipv6_addr_and_prefix *b = &(fv_b->value.ipv6);
@@ -109,8 +109,10 @@ cmp_order(const fvalue_t *fv_a, const fvalue_t *fv_b)
 		gint byte_a = (gint) (a->addr.bytes[pos]);
 		gint byte_b = (gint) (b->addr.bytes[pos]);
 
-		if (byte_a != byte_b)
-			return byte_a - byte_b;
+		if (byte_a != byte_b) {
+			*cmp = byte_a - byte_b;
+			return FT_OK;
+		}
 
 		prefix -= 8;
 		pos++;
@@ -120,10 +122,13 @@ cmp_order(const fvalue_t *fv_a, const fvalue_t *fv_b)
 		gint byte_a = (gint) (a->addr.bytes[pos] & (bitmasks[prefix]));
 		gint byte_b = (gint) (b->addr.bytes[pos] & (bitmasks[prefix]));
 
-		if (byte_a != byte_b)
-			return byte_a - byte_b;
+		if (byte_a != byte_b) {
+			*cmp = byte_a - byte_b;
+			return FT_OK;
+		}
 	}
-	return 0;
+	*cmp = 0;
+	return FT_OK;
 }
 
 static enum ft_result
@@ -185,8 +190,11 @@ ftype_register_ipv6(void)
 		NULL,				/* val_from_charconst */
 		ipv6_to_repr,			/* val_to_string_repr */
 
+		NULL,				/* val_to_uinteger64 */
+		NULL,				/* val_to_sinteger64 */
+
 		{ .set_value_bytes = ipv6_fvalue_set },	/* union set_value */
-		{ .get_value_ptr = value_get },		/* union get_value */
+		{ .get_value_bytes = value_get },	/* union get_value */
 
 		cmp_order,
 		NULL, 				/* XXX, cmp_contains, needed? ipv4 doesn't support it */

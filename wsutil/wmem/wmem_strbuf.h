@@ -12,8 +12,7 @@
 #ifndef __WMEM_STRBUF_H__
 #define __WMEM_STRBUF_H__
 
-#include <string.h>
-#include <glib.h>
+#include <ws_codepoints.h>
 
 #include "wmem_core.h"
 
@@ -30,14 +29,33 @@ extern "C" {
  *    @{
  */
 
-struct _wmem_strbuf_t;
+/* Holds a wmem-allocated string-buffer.
+ *  len is the length of the string (not counting the null-terminator) and
+ *      should be the same as strlen(str) unless the string contains embedded
+ *      nulls.
+ *  alloc_size is the size of the raw buffer pointed to by str, regardless of
+ *      what string is actually being stored (i.e. the buffer contents)
+ *  max_size is the maximum permitted alloc_size (NOT the maximum permitted len,
+ *      which must be one shorter than alloc_size to permit null-termination).
+ *      When max_size is 0 (the default), no maximum is enforced.
+ */
+struct _wmem_strbuf_t {
+    /* read-only fields */
+    wmem_allocator_t *allocator;
+    gchar *str;
+    size_t len;
+
+    /* private fields */
+    size_t alloc_size;
+    size_t max_size;
+};
 
 typedef struct _wmem_strbuf_t wmem_strbuf_t;
 
 WS_DLL_PUBLIC
 wmem_strbuf_t *
 wmem_strbuf_sized_new(wmem_allocator_t *allocator,
-                      gsize alloc_len, gsize max_len)
+                      size_t alloc_size, size_t max_size)
 G_GNUC_MALLOC;
 
 #define wmem_strbuf_new_label(ALLOCATOR) \
@@ -49,15 +67,25 @@ wmem_strbuf_new(wmem_allocator_t *allocator, const gchar *str)
 G_GNUC_MALLOC;
 
 WS_DLL_PUBLIC
+wmem_strbuf_t *
+wmem_strbuf_new_len(wmem_allocator_t *allocator, const gchar *str, size_t len)
+G_GNUC_MALLOC;
+
+WS_DLL_PUBLIC
+wmem_strbuf_t *
+wmem_strbuf_dup(wmem_allocator_t *allocator, const wmem_strbuf_t *strbuf)
+G_GNUC_MALLOC;
+
+WS_DLL_PUBLIC
 void
 wmem_strbuf_append(wmem_strbuf_t *strbuf, const gchar *str);
 
-/* Appends up to append_len bytes (as allowed by strbuf->max_len) from
+/* Appends up to append_len bytes (as allowed by strbuf->max_size) from
  * str. Ensures that strbuf is null terminated afterwards but will copy
  * embedded nulls. */
 WS_DLL_PUBLIC
 void
-wmem_strbuf_append_len(wmem_strbuf_t *strbuf, const gchar *str, gsize append_len);
+wmem_strbuf_append_len(wmem_strbuf_t *strbuf, const gchar *str, size_t append_len);
 
 WS_DLL_PUBLIC
 void
@@ -76,17 +104,44 @@ WS_DLL_PUBLIC
 void
 wmem_strbuf_append_unichar(wmem_strbuf_t *strbuf, const gunichar c);
 
+#define wmem_strbuf_append_unichar_repl(buf) \
+            wmem_strbuf_append_unichar(buf, UNICODE_REPLACEMENT_CHARACTER)
+
+/* As wmem_strbuf_append_unichar but appends a REPLACEMENT CHARACTER
+ * instead for any invalid Unicode codepoints.
+ */
 WS_DLL_PUBLIC
 void
-wmem_strbuf_truncate(wmem_strbuf_t *strbuf, const gsize len);
+wmem_strbuf_append_unichar_validated(wmem_strbuf_t *strbuf, const gunichar c);
+
+WS_DLL_PUBLIC
+void
+wmem_strbuf_append_hex(wmem_strbuf_t *strbuf, uint8_t);
+
+/* Returns the number of characters written (4, 6 or 10). */
+WS_DLL_PUBLIC
+size_t
+wmem_strbuf_append_hex_unichar(wmem_strbuf_t *strbuf, gunichar);
+
+WS_DLL_PUBLIC
+void
+wmem_strbuf_truncate(wmem_strbuf_t *strbuf, const size_t len);
 
 WS_DLL_PUBLIC
 const gchar *
-wmem_strbuf_get_str(wmem_strbuf_t *strbuf);
+wmem_strbuf_get_str(const wmem_strbuf_t *strbuf);
 
 WS_DLL_PUBLIC
-gsize
-wmem_strbuf_get_len(wmem_strbuf_t *strbuf);
+size_t
+wmem_strbuf_get_len(const wmem_strbuf_t *strbuf);
+
+WS_DLL_PUBLIC
+int
+wmem_strbuf_strcmp(const wmem_strbuf_t *sb1, const wmem_strbuf_t *sb2);
+
+WS_DLL_PUBLIC
+const char *
+wmem_strbuf_strstr(const wmem_strbuf_t *haystack, const wmem_strbuf_t *needle);
 
 /** Truncates the allocated memory down to the minimal amount, frees the header
  *  structure, and returns a non-const pointer to the raw string. The
@@ -100,6 +155,14 @@ wmem_strbuf_finalize(wmem_strbuf_t *strbuf);
 WS_DLL_PUBLIC
 void
 wmem_strbuf_destroy(wmem_strbuf_t *strbuf);
+
+WS_DLL_PUBLIC
+bool
+wmem_strbuf_utf8_validate(wmem_strbuf_t *strbuf, const char **endptr);
+
+WS_DLL_PUBLIC
+void
+wmem_strbuf_utf8_make_valid(wmem_strbuf_t *strbuf);
 
 /**   @}
  *  @} */

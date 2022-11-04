@@ -76,8 +76,8 @@ WSLUA_METAMETHOD FieldInfo__call(lua_State* L) {
        instead of just the *value* bytes. That was a bug, and has been changed in 1.11.4.
        Furthermore, it retrieved an `ftypes.GUID` as a `ByteArray`, which is also incorrect.
 
-       If you wish to still get a `ByteArray` of the `TvbRange`, use `FieldInfo:get_range()`
-       to get the `TvbRange`, and then use `Tvb:bytes()` to convert it to a `ByteArray`.
+       If you wish to still get a `ByteArray` of the `TvbRange`, use `fieldinfo.range`
+       to get the `TvbRange`, and then use `tvbrange:bytes()` to convert it to a `ByteArray`.
        */
     FieldInfo fi = checkFieldInfo(L,1);
 
@@ -144,12 +144,13 @@ WSLUA_METAMETHOD FieldInfo__call(lua_State* L) {
         case FT_ABSOLUTE_TIME:
         case FT_RELATIVE_TIME: {
                 NSTime nstime = (NSTime)g_malloc(sizeof(nstime_t));
-                *nstime = *(NSTime)fvalue_get(&(fi->ws_fi->value));
+                *nstime = *fvalue_get_time(&(fi->ws_fi->value));
                 pushNSTime(L,nstime);
                 return 1;
             }
         case FT_STRING:
-        case FT_STRINGZ: {
+        case FT_STRINGZ:
+        case FT_STRINGZPAD: {
                 gchar* repr = fvalue_to_string_repr(NULL, &fi->ws_fi->value,FTREPR_DISPLAY,BASE_NONE);
                 if (repr)
                 {
@@ -177,7 +178,7 @@ WSLUA_METAMETHOD FieldInfo__call(lua_State* L) {
         case FT_OID:
             {
                 ByteArray ba = g_byte_array_new();
-                g_byte_array_append(ba, (const guint8 *) fvalue_get(&fi->ws_fi->value),
+                g_byte_array_append(ba, fvalue_get_bytes(&fi->ws_fi->value),
                                     fvalue_length(&fi->ws_fi->value));
                 pushByteArray(L,ba);
                 return 1;
@@ -185,7 +186,7 @@ WSLUA_METAMETHOD FieldInfo__call(lua_State* L) {
         case FT_PROTOCOL:
             {
                 ByteArray ba = g_byte_array_new();
-                tvbuff_t* tvb = (tvbuff_t *) fvalue_get(&fi->ws_fi->value);
+                tvbuff_t* tvb = fvalue_get_protocol(&fi->ws_fi->value);
                 guint8* raw;
                 if (tvb != NULL) {
                     raw = (guint8 *)tvb_memdup(NULL, tvb, 0, tvb_captured_length(tvb));

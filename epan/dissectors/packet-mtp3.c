@@ -463,6 +463,7 @@ dissect_mtp3_3byte_pc(tvbuff_t *tvb, guint offset, proto_tree *tree, gint ett_pc
   proto_item_append_text(pc_item, " (%s)", pc_string);
   hidden_item = proto_tree_add_string(tree, hf_pc_string, tvb, offset, ANSI_PC_LENGTH, pc_string);
   proto_item_set_hidden(hidden_item);
+
   snprintf(pc_string, sizeof(pc_string), "0x%x", pc);
   proto_item_append_text(pc_item, " (%s)", pc_string);
   hidden_item = proto_tree_add_string(tree, hf_pc_string, tvb, offset, ANSI_PC_LENGTH, pc_string);
@@ -843,7 +844,7 @@ static void mtp3_stat_init(stat_tap_table_ui* new_stat)
 }
 
 static tap_packet_status
-mtp3_stat_packet(void *tapdata, packet_info *pinfo _U_, epan_dissect_t *edt _U_, const void *m3tr_ptr)
+mtp3_stat_packet(void *tapdata, packet_info *pinfo _U_, epan_dissect_t *edt _U_, const void *m3tr_ptr, tap_flags_t flags _U_)
 {
   stat_data_t* stat_data = (stat_data_t*)tapdata;
   const mtp3_tap_rec_t  *m3tr = (const mtp3_tap_rec_t *)m3tr_ptr;

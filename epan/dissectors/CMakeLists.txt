@@ -101,6 +101,7 @@ set(CLEAN_ASN1_DISSECTOR_SRC
 	${CMAKE_CURRENT_SOURCE_DIR}/packet-goose.c
 	${CMAKE_CURRENT_SOURCE_DIR}/packet-gsm_map.c
 	${CMAKE_CURRENT_SOURCE_DIR}/packet-HI2Operations.c
+	${CMAKE_CURRENT_SOURCE_DIR}/packet-h224.c
 	${CMAKE_CURRENT_SOURCE_DIR}/packet-h225.c
 	${CMAKE_CURRENT_SOURCE_DIR}/packet-h235.c
 	${CMAKE_CURRENT_SOURCE_DIR}/packet-h245.c
@@ -167,6 +168,7 @@ set(CLEAN_ASN1_DISSECTOR_SRC
 	${CMAKE_CURRENT_SOURCE_DIR}/packet-qsig.c
 	${CMAKE_CURRENT_SOURCE_DIR}/packet-ranap.c
 	${CMAKE_CURRENT_SOURCE_DIR}/packet-rnsap.c
+	${CMAKE_CURRENT_SOURCE_DIR}/packet-roon_discovery.c
 	${CMAKE_CURRENT_SOURCE_DIR}/packet-ros.c
 	${CMAKE_CURRENT_SOURCE_DIR}/packet-rrc.c
 	${CMAKE_CURRENT_SOURCE_DIR}/packet-rrlp.c
@@ -244,6 +246,7 @@ source_group(dissectors-ncp2222 FILES ${NCP2222_DISSECTOR_SRC})
 
 set(DISSECTOR_PUBLIC_HEADERS
 	cond_ace_token_enum.h
+	file-pcapng.h
 	file-rbm.h
 	packet-6lowpan.h
 	packet-a21.h
@@ -266,6 +269,7 @@ set(DISSECTOR_PUBLIC_HEADERS
 	packet-autosar-ipdu-multiplexer.h
 	packet-bacapp.h
 	packet-bacnet.h
+	packet-bblog.h
 	packet-ber.h
 	packet-bfd.h
 	packet-bgp.h
@@ -428,6 +432,7 @@ set(DISSECTOR_PUBLIC_HEADERS
 	packet-isup.h
 	packet-its.h
 	packet-iwarp-ddp-rdmap.h
+	packet-json.h
 	packet-juniper.h
 	packet-jxta.h
 	packet-kerberos.h
@@ -589,6 +594,7 @@ set(DISSECTOR_PUBLIC_HEADERS
 	packet-tcap.h
 	packet-tcp.h
 	packet-tcpcl.h
+	packet-tecmp.h
 	packet-tetra.h
 	packet-thrift.h
 	packet-tls-utils.h
@@ -651,12 +657,14 @@ set(DISSECTOR_PUBLIC_HEADERS
 
 set(DISSECTOR_HEADER_FILES
 	${DISSECTOR_PUBLIC_HEADERS}
+	${CUSTOM_DISSECTOR_HEADER_FILES}
 )
 
 set(DISSECTOR_SRC
 	${CMAKE_CURRENT_SOURCE_DIR}/packet-li5g.c
 	${CMAKE_CURRENT_SOURCE_DIR}/file-blf.c
 	${CMAKE_CURRENT_SOURCE_DIR}/file-btsnoop.c
+	${CMAKE_CURRENT_SOURCE_DIR}/file-dlt.c
 	${CMAKE_CURRENT_SOURCE_DIR}/file-elf.c
 	${CMAKE_CURRENT_SOURCE_DIR}/file-file.c
 	${CMAKE_CURRENT_SOURCE_DIR}/file-gif.c
@@ -1148,6 +1156,7 @@ set(DISSECTOR_SRC
 	${CMAKE_CURRENT_SOURCE_DIR}/packet-gprs-llc.c
 	${CMAKE_CURRENT_SOURCE_DIR}/packet-gprscdr.c
 	${CMAKE_CURRENT_SOURCE_DIR}/packet-gre.c
+	${CMAKE_CURRENT_SOURCE_DIR}/packet-grebonding.c
 	${CMAKE_CURRENT_SOURCE_DIR}/packet-grpc.c
 	${CMAKE_CURRENT_SOURCE_DIR}/packet-gsm_a_bssmap.c
 	${CMAKE_CURRENT_SOURCE_DIR}/packet-gsm_a_common.c
@@ -1338,6 +1347,7 @@ set(DISSECTOR_SRC
 	${CMAKE_CURRENT_SOURCE_DIR}/packet-jdwp.c
 	${CMAKE_CURRENT_SOURCE_DIR}/packet-jmirror.c
 	${CMAKE_CURRENT_SOURCE_DIR}/packet-jpeg.c
+	${CMAKE_CURRENT_SOURCE_DIR}/packet-json_3gpp.c
 	${CMAKE_CURRENT_SOURCE_DIR}/packet-json.c
 	${CMAKE_CURRENT_SOURCE_DIR}/packet-juniper.c
 	${CMAKE_CURRENT_SOURCE_DIR}/packet-jxta.c
@@ -1395,6 +1405,7 @@ set(DISSECTOR_SRC
 	${CMAKE_CURRENT_SOURCE_DIR}/packet-lmi.c
 	${CMAKE_CURRENT_SOURCE_DIR}/packet-lmp.c
 	${CMAKE_CURRENT_SOURCE_DIR}/packet-lnet.c
+	${CMAKE_CURRENT_SOURCE_DIR}/packet-locamation-im.c
 	${CMAKE_CURRENT_SOURCE_DIR}/packet-logcat.c
 	${CMAKE_CURRENT_SOURCE_DIR}/packet-logcat-text.c
 	${CMAKE_CURRENT_SOURCE_DIR}/packet-lon.c
@@ -1569,6 +1580,7 @@ set(DISSECTOR_SRC
 	${CMAKE_CURRENT_SOURCE_DIR}/packet-obd-ii.c
 	${CMAKE_CURRENT_SOURCE_DIR}/packet-obex.c
 	${CMAKE_CURRENT_SOURCE_DIR}/packet-ocfs2.c
+	${CMAKE_CURRENT_SOURCE_DIR}/packet-ocp1.c
 	${CMAKE_CURRENT_SOURCE_DIR}/packet-oicq.c
 	${CMAKE_CURRENT_SOURCE_DIR}/packet-oipf.c
 	${CMAKE_CURRENT_SOURCE_DIR}/packet-olsr.c
@@ -1753,6 +1765,7 @@ set(DISSECTOR_SRC
 	${CMAKE_CURRENT_SOURCE_DIR}/packet-sadmind.c
 	${CMAKE_CURRENT_SOURCE_DIR}/packet-sametime.c
 	${CMAKE_CURRENT_SOURCE_DIR}/packet-sap.c
+	${CMAKE_CURRENT_SOURCE_DIR}/packet-sapni.c
 	${CMAKE_CURRENT_SOURCE_DIR}/packet-sasp.c
 	${CMAKE_CURRENT_SOURCE_DIR}/packet-sbus.c
 	${CMAKE_CURRENT_SOURCE_DIR}/packet-sbc.c
@@ -2055,6 +2068,7 @@ set(DISSECTOR_SUPPORT_SRC
 	${CMAKE_CURRENT_SOURCE_DIR}/packet-dcerpc-nt.c
 	${CMAKE_CURRENT_SOURCE_DIR}/packet-snort-config.c
 	${CMAKE_CURRENT_SOURCE_DIR}/usb.c
+	${CUSTOM_DISSECTOR_SUPPORT_SRC}
 )
 source_group(dissector-support FILES ${DISSECTOR_SUPPORT_SRC})
 
@@ -2128,7 +2142,6 @@ set_source_files_properties(
 add_library(dissectors OBJECT
 	#Included so that Visual Studio can properly put header files in solution
 	${DISSECTOR_HEADER_FILES}
-
 
 	${DISSECTOR_FILES}
 	${DISSECTOR_SUPPORT_SRC}

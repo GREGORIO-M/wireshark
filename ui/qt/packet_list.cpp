@@ -18,7 +18,6 @@
 #include <epan/epan.h>
 #include <epan/epan_dissect.h>
 
-#include <epan/column-info.h>
 #include <epan/column.h>
 #include <epan/expert.h>
 #include <epan/ipproto.h>
@@ -32,6 +31,7 @@
 #include "ui/recent.h"
 #include "ui/recent_utils.h"
 #include "ui/ws_ui_util.h"
+#include "ui/simple_dialog.h"
 #include <wsutil/utf8_entities.h>
 #include "ui/util.h"
 
@@ -98,21 +98,6 @@ const int tail_update_interval_ = 100; // Milliseconds.
 const int overlay_update_interval_ = 100; // 250; // Milliseconds.
 
 
-// Copied from ui/gtk/packet_list.c
-void packet_list_resize_column(gint col)
-{
-    if (!gbl_cur_packet_list) return;
-    gbl_cur_packet_list->resizeColumnToContents(col);
-}
-
-void
-packet_list_select_first_row(void)
-{
-    if (!gbl_cur_packet_list)
-        return;
-    gbl_cur_packet_list->goFirstPacket(false);
-}
-
 /*
  * Given a frame_data structure, scroll to and select the row in the
  * packet list corresponding to that frame.  If there is no such
@@ -130,7 +115,12 @@ packet_list_select_row_from_data(frame_data *fdata_needle)
         return FALSE;
 
     model->flushVisibleRows();
-    int row = model->visibleIndexOf(fdata_needle);
+    int row = -1;
+    if (!fdata_needle)
+        row = 0;
+    else
+        row = model->visibleIndexOf(fdata_needle);
+
     if (row >= 0) {
         /* Calling ClearAndSelect with setCurrentIndex clears the "current"
          * item, but doesn't clear the "selected" item. We want to clear
@@ -155,14 +145,6 @@ packet_list_clear(void)
 }
 
 void
-packet_list_recolor_packets(void)
-{
-    if (gbl_cur_packet_list) {
-        gbl_cur_packet_list->recolorPackets();
-    }
-}
-
-void
 packet_list_freeze(void)
 {
     if (gbl_cur_packet_list) {
@@ -178,23 +160,6 @@ packet_list_thaw(void)
     }
 
     packets_bar_update();
-}
-
-frame_data *
-packet_list_get_row_data(gint row)
-{
-    if (gbl_cur_packet_list) {
-        return gbl_cur_packet_list->getFDataForRow(row);
-    }
-    return NULL;
-}
-
-// Called from cf_continue_tail and cf_finish_tail when auto_scroll_live
-// is enabled.
-void
-packet_list_moveto_end(void)
-{
-    // gbl_cur_packet_list->scrollToBottom();
 }
 
 /* Redraw the packet list *and* currently-selected detail */
@@ -251,7 +216,7 @@ PacketList::PacketList(QWidget *parent) :
 
     proto_prefs_menus_.setTitle(tr("Protocol Preferences"));
 
-    packet_list_header_ = new PacketListHeader(header()->orientation(), cap_file_);
+    packet_list_header_ = new PacketListHeader(header()->orientation());
     connect(packet_list_header_, &PacketListHeader::resetColumnWidth, this, &PacketList::setRecentColumnWidth);
     connect(packet_list_header_, &PacketListHeader::updatePackets, this, &PacketList::updatePackets);
     connect(packet_list_header_, &PacketListHeader::showColumnPreferences, this, &PacketList::showProtocolPreferences);
@@ -284,7 +249,11 @@ PacketList::PacketList(QWidget *parent) :
     connect(packet_list_model_, SIGNAL(itemHeightChanged(const QModelIndex&)), this, SLOT(updateRowHeights(const QModelIndex&)));
     connect(mainApp, SIGNAL(addressResolutionChanged()), this, SLOT(redrawVisiblePacketsDontSelectCurrent()));
     connect(mainApp, SIGNAL(columnDataChanged()), this, SLOT(redrawVisiblePacketsDontSelectCurrent()));
-    connect(mainApp, &MainApplication::preferencesChanged, this, [=]() { setSortingEnabled(prefs.gui_packet_list_sortable); });
+    connect(mainApp, &MainApplication::preferencesChanged, this, [=]() {
+        if ((bool) (prefs.gui_packet_list_sortable) != isSortingEnabled()) {
+            setSortingEnabled(prefs.gui_packet_list_sortable);
+        }
+    });
 
     connect(header(), SIGNAL(sectionResized(int,int,int)),
             this, SLOT(sectionResized(int,int,int)));
@@ -531,10 +500,12 @@ void PacketList::selectionChanged (const QItemSelection & selected, const QItemS
         }
     }
 
-    if (row < 0)
+    if (row < 0 || !packet_list_model_)
         cf_unselect_packet(cap_file_);
-    else
-        cf_select_packet(cap_file_, row);
+    else {
+        frame_data * fdata = packet_list_model_->getRowFdata(row);
+        cf_select_packet(cap_file_, fdata);
+    }
 
     if (!in_history_ && cap_file_->current_frame) {
         cur_history_++;
@@ -641,6 +612,7 @@ void PacketList::contextMenuEvent(QContextMenuEvent *event)
             new FrameInformation(new CaptureFile(this, cap_file_), packet_list_model_->getRowFdata(ctxIndex.row()));
 
     QMenu * ctx_menu = new QMenu(this);
+    ctx_menu->setAttribute(Qt::WA_DeleteOnClose);
     // XXX We might want to reimplement setParent() and fill in the context
     // menu there.
     ctx_menu->addAction(window()->findChild<QAction *>("actionEditMarkPacket"));
@@ -741,7 +713,7 @@ void PacketList::contextMenuEvent(QContextMenuEvent *event)
     else
         emit framesSelected(QList<int>());
 
-    ctx_menu->exec(event->globalPos());
+    ctx_menu->popup(event->globalPos());
 }
 
 void PacketList::ctxDecodeAsDialog()
@@ -909,7 +881,19 @@ void PacketList::mouseMoveEvent (QMouseEvent *event)
 
 void PacketList::keyPressEvent(QKeyEvent *event)
 {
-    QTreeView::keyPressEvent(event);
+    bool handled = false;
+    if (event->key() == Qt::Key_Down || event->key() == Qt::Key_Up) {
+        if (currentIndex().isValid() && currentIndex().column() > 0) {
+            int pos = horizontalScrollBar()->value();
+            QTreeView::keyPressEvent(event);
+            horizontalScrollBar()->setValue(pos);
+            handled = true;
+        }
+    }
+
+    if (!handled)
+        QTreeView::keyPressEvent(event);
+
     if (event->matches(QKeySequence::Copy))
     {
         QStringList content;
@@ -1330,36 +1314,21 @@ QString PacketList::getFilterFromRowAndColumn(QModelIndex idx)
         epan_dissect_run(&edt, cap_file_->cd_t, &rec,
                          frame_tvbuff_new_buffer(&cap_file_->provider, fdata, &buf),
                          fdata, &cap_file_->cinfo);
-        epan_dissect_fill_in_columns(&edt, TRUE, TRUE);
 
-        if ((cap_file_->cinfo.columns[column].col_custom_occurrence) ||
-            (strchr (cap_file_->cinfo.col_expr.col_expr_val[column], ',') == NULL))
-        {
-            /* Only construct the filter when a single occurrence is displayed
-             * otherwise we might end up with a filter like "ip.proto==1,6".
-             *
-             * Or do we want to be able to filter on multiple occurrences so that
-             * the filter might be calculated as "ip.proto==1 && ip.proto==6"
-             * instead?
+        if (cap_file_->cinfo.columns[column].col_fmt == COL_CUSTOM) {
+            filter.append(gchar_free_to_qstring(col_custom_get_filter(&edt, &cap_file_->cinfo, column)));
+        } else {
+            /* We don't need to fill in the custom columns, as we get their
+             * filters above.
              */
+            col_fill_in(&edt.pi, TRUE, TRUE);
             if (strlen(cap_file_->cinfo.col_expr.col_expr[column]) != 0 &&
                 strlen(cap_file_->cinfo.col_expr.col_expr_val[column]) != 0) {
                 gboolean is_string_value = FALSE;
-                if (cap_file_->cinfo.columns[column].col_fmt == COL_CUSTOM) {
-                    header_field_info *hfi = proto_registrar_get_byname(cap_file_->cinfo.columns[column].col_custom_fields);
-                    if (hfi && hfi->parent == -1) {
-                        /* Protocol only */
-                        filter.append(cap_file_->cinfo.col_expr.col_expr[column]);
-                    } else if (hfi && hfi->type == FT_STRING) {
-                        /* Custom string, add quotes */
-                        is_string_value = TRUE;
-                    }
-                } else {
-                    header_field_info *hfi = proto_registrar_get_byname(cap_file_->cinfo.col_expr.col_expr[column]);
-                    if (hfi && hfi->type == FT_STRING) {
-                        /* Could be an address type such as usb.src which must be quoted. */
-                        is_string_value = TRUE;
-                    }
+                header_field_info *hfi = proto_registrar_get_byname(cap_file_->cinfo.col_expr.col_expr[column]);
+                if (hfi && hfi->type == FT_STRING) {
+                    /* Could be an address type such as usb.src which must be quoted. */
+                    is_string_value = TRUE;
                 }
 
                 if (filter.isEmpty()) {
@@ -1431,6 +1400,18 @@ void PacketList::addPacketComment(QString new_comment)
 
         wtap_block_t pkt_block = cf_get_packet_block(cap_file_, fdata);
 
+        /*
+         * Make sure this would fit in a pcapng option.
+         *
+         * XXX - 65535 is the maximum size for an option in pcapng;
+         * what if another capture file format supports larger
+         * comments?
+         */
+        if (ba.size() > 65535) {
+            simple_dialog(ESD_TYPE_ERROR, ESD_BTN_OK,
+                          "That comment is too large to save in a capture file.");
+            return;
+        }
         wtap_block_add_string_option(pkt_block, OPT_COMMENT, ba.data(), ba.size());
 
         cf_set_modified_block(cap_file_, fdata, pkt_block);
@@ -1457,6 +1438,18 @@ void PacketList::setPacketComment(guint c_number, QString new_comment)
         wtap_block_remove_nth_option_instance(pkt_block, OPT_COMMENT, c_number);
     } else {
         QByteArray ba = new_comment.toLocal8Bit();
+        /*
+         * Make sure this would fit in a pcapng option.
+         *
+         * XXX - 65535 is the maximum size for an option in pcapng;
+         * what if another capture file format supports larger
+         * comments?
+         */
+        if (ba.size() > 65535) {
+            simple_dialog(ESD_TYPE_ERROR, ESD_BTN_OK,
+                          "That comment is too large to save in a capture file.");
+            return;
+        }
         wtap_block_set_nth_string_option_value(pkt_block, OPT_COMMENT, c_number, ba.data(), ba.size());
     }
 
@@ -1555,7 +1548,6 @@ void PacketList::setCaptureFile(capture_file *cf)
 {
     cap_file_ = cf;
     packet_list_model_->setCaptureFile(cf);
-    packet_list_header_->setCaptureFile(cf);
     if (cf) {
         if (columns_changed_) {
             columnsChanged();
@@ -1771,6 +1763,7 @@ void PacketList::applyTimeShift()
 void PacketList::updatePackets(bool redraw)
 {
     if (redraw) {
+        packet_list_model_->resetColumns();
         redrawVisiblePackets();
     } else {
         update();
@@ -2136,4 +2129,16 @@ void PacketList::rowsInserted(const QModelIndex &parent, int start, int end)
 {
     QTreeView::rowsInserted(parent, start, end);
     rows_inserted_ = true;
+}
+
+void PacketList::resizeAllColumns(bool onlyTimeFormatted)
+{
+    if (!cap_file_ || cap_file_->state == FILE_CLOSED)
+        return;
+
+    for (int col = 0; col < cap_file_->cinfo.num_cols; col++) {
+        if (! onlyTimeFormatted || col_has_time_fmt(&cap_file_->cinfo, col)) {
+            resizeColumnToContents(col);
+        }
+    }
 }

@@ -104,7 +104,7 @@ typedef struct _capture_file {
     guint32                     search_pos;           /* Byte position of last byte found in a hex search */
     guint32                     search_len;           /* Length of bytes matching the search */
     gboolean                    case_type;            /* TRUE if case-insensitive text search */
-    GRegex                     *regex;                /* Set if regular expression search */
+    ws_regex_t                 *regex;                /* Set if regular expression search */
     search_charset_t            scs_type;             /* Character set for text search */
     search_direction            dir;                  /* Direction in which to do searches */
     gboolean                    search_in_progress;   /* TRUE if user just clicked OK in the Find dialog or hit <control>N/B */
@@ -116,7 +116,6 @@ typedef struct _capture_file {
     /* Data for currently selected frame */
     column_info                 cinfo;                /* Column formatting information */
     frame_data                 *current_frame;        /* Frame data */
-    gint                        current_row;          /* Row number */
     epan_dissect_t             *edt;                  /* Protocol dissection */
     field_info                 *finfo_selected;       /* Field info */
     wtap_rec                    rec;                  /* Record header */

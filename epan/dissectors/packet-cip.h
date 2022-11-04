@@ -472,12 +472,28 @@ typedef struct attribute_info {
    attribute_dissector_func *pdissect;
 } attribute_info_t;
 
+// offset - starts at command specific data.
+// returns - size of data that was parsed.
+typedef int service_dissector_func(packet_info *pinfo, proto_tree *tree, proto_item *item, tvbuff_t *tvb,
+   int offset, gboolean request);
+typedef struct cip_service_info {
+   guint32                 class_id;
+   guint8                  service_id;
+   const gchar            *service_name;
+   service_dissector_func *pdissect;
+} cip_service_info_t;
+
 // This describes a one-way connection. Each CIP Connection includes 2 of these.
 typedef struct cip_connID_info {
+   // Connection ID from Forward Open Request. This may get updated in the Forward Open Response.
    guint32 connID;
+
+   // From Common Packet Format, Sockaddr Info Item.
    address ipaddress;
    guint16 port;
-   guint32 type;
+
+   // Network Connection Parameters
+   guint32 type;  // See: cip_con_type_vals
 
    // Requested Packet Interval in microseconds.
    guint32 rpi;
@@ -514,10 +530,9 @@ typedef struct cip_conn_info {
    guint8                  TransportClass_trigger;
    guint32                 timeout_multiplier;
    cip_safety_epath_info_t safety;
-   guint32                 ClassID;
-   guint32                 ConnPoint;
    guint32                 FwdOpenPathLenBytes;
    void*                   pFwdOpenPathData;
+   cip_simple_request_info_t connection_path;
 
    // Information about specific packet numbers.
    guint32 open_req_frame;
@@ -529,6 +544,8 @@ typedef struct cip_conn_info {
    cip_connID_info_t T2O;
 
    // Unique ID generated that links together the CIP Connections.
+   //  - If the full connection information is available (eg: FwdOpen found), then it will link both
+   //    connections (one for each direction)
    guint32 connid;
 } cip_conn_info_t;
 
@@ -537,6 +554,8 @@ typedef struct cip_req_info {
 
    // This is the CIP Service Code. It does not include the Response bit.
    guint8                     bService;
+
+   // Number of 16-bit words in pIOI.
    guint                      IOILen;
    void                      *pIOI;
 
@@ -571,12 +590,14 @@ enum cip_elem_data_types {
 
 extern void add_cip_service_to_info_column(packet_info *pinfo, guint8 service, const value_string* service_vals);
 extern attribute_info_t* cip_get_attribute(guint class_id, guint instance, guint attribute);
+extern cip_service_info_t* cip_get_service_one_table(cip_service_info_t* services, size_t size, guint32 class_id, guint8 service_id);
 extern void cip_rpi_api_fmt(gchar *s, guint32 value);
 
 extern int  dissect_cip_attribute(packet_info *pinfo, proto_tree *tree, proto_item *item, tvbuff_t *tvb, attribute_info_t* attr, int offset, int total_len);
 extern void dissect_cip_data(proto_tree *item_tree, tvbuff_t *tvb, int offset, packet_info *pinfo, cip_req_info_t *preq_info, proto_item* msp_item, gboolean is_msp_item);
 extern void dissect_cip_date_and_time(proto_tree *tree, tvbuff_t *tvb, int offset, int hf_datetime);
 extern int dissect_cip_utime(proto_tree* tree, tvbuff_t* tvb, int offset, int hf_datetime);
+extern int dissect_cip_generic_service_rsp(tvbuff_t* tvb, packet_info* pinfo, proto_tree* tree);
 extern int  dissect_cip_get_attribute_list_req(tvbuff_t *tvb, packet_info *pinfo, proto_tree *tree, proto_item * item,
    int offset, cip_simple_request_info_t* req_data);
 extern int  dissect_cip_multiple_service_packet(tvbuff_t *tvb, packet_info *pinfo, proto_tree *tree, proto_item * item, int offset, gboolean request);
@@ -597,6 +618,7 @@ extern void dissect_deviceid(tvbuff_t *tvb, int offset, proto_tree *tree,
    int hf_vendor, int hf_devtype, int hf_prodcode,
    int hf_compatibility, int hf_comp_bit, int hf_majrev, int hf_minrev,
    gboolean generate);
+extern int dissect_electronic_key_format(tvbuff_t* tvb, int offset, proto_tree* tree, gboolean generate, guint8 key_format);
 extern int  dissect_optional_attr_list(packet_info *pinfo, proto_tree *tree, proto_item *item, tvbuff_t *tvb,
    int offset, int total_len);
 extern int  dissect_optional_service_list(packet_info *pinfo, proto_tree *tree, proto_item *item, tvbuff_t *tvb,
@@ -609,15 +631,19 @@ extern int  dissect_padded_epath_len_uint(packet_info *pinfo, proto_tree *tree, 
 extern void load_cip_request_data(packet_info *pinfo, cip_simple_request_info_t *req_data);
 extern void reset_cip_request_info(cip_simple_request_info_t* req_data);
 extern gboolean should_dissect_cip_response(tvbuff_t *tvb, int offset, guint8 gen_status);
-
+extern gboolean cip_connection_triad_match(const cip_connection_triad_t* left, const cip_connection_triad_t* right);
 
 /*
 ** Exported variables
 */
 extern const value_string cip_sc_rr[];
 extern const value_string cip_reset_type_vals[];
+extern const value_string cip_con_prio_vals[];
+extern const value_string cip_con_type_vals[];
+extern const value_string cip_con_time_mult_vals[];
 extern const value_string cip_class_names_vals[];
 extern const value_string cip_port_number_vals[];
+extern const value_string cip_id_state_vals[];
 extern value_string_ext cip_gs_vals_ext;
 extern value_string_ext cip_cm_ext_st_vals_ext;
 extern value_string_ext cip_vendor_vals_ext;

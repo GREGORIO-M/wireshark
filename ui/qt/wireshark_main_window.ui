@@ -296,7 +296,7 @@
      <addaction name="actionViewTimeDisplayFormatDateYDOYandTimeOfDay"/>
      <addaction name="actionViewTimeDisplayFormatTimeOfDay"/>
      <addaction name="actionViewTimeDisplayFormatSecondsSinceEpoch"/>
-     <addaction name="actionViewTimeDisplayFormatSecondsSinceBeginningOfCapture"/>
+     <addaction name="actionViewTimeDisplayFormatSecondsSinceFirstCapturedPacket"/>
      <addaction name="actionViewTimeDisplayFormatSecondsSincePreviousCapturedPacket"/>
      <addaction name="actionViewTimeDisplayFormatSecondsSincePreviousDisplayedPacket"/>
      <addaction name="actionViewTimeDisplayFormatUTCDateYMDandTimeOfDay"/>
@@ -564,6 +564,13 @@
      </property>
      <addaction name="actionStatisticsSOMEIPmessages"/>
      <addaction name="actionStatisticsSOMEIPSDentries"/>
+    </widget>
+    <addaction name="menuDTN"/>
+    <widget class="QMenu" name="menuDTN">
+     <property name="title">
+      <string>&amp;DTN</string>
+     </property>
+     <addaction name="actionStatisticsLTP"/>
     </widget>
    </widget>
    <widget class="QMenu" name="menuTelephony">
@@ -1956,6 +1963,14 @@
     <string>SOME/IP-SD Entries statistics</string>
    </property>
   </action>
+  <action name="actionStatisticsLTP">
+   <property name="text">
+    <string>&amp;LTP</string>
+   </property>
+   <property name="toolTip">
+    <string>LTP segment and block statistics</string>
+   </property>
+  </action>
   <action name="actionTelephonyISUPMessages">
    <property name="text">
     <string>&amp;ISUP Messages</string>
@@ -2301,12 +2316,12 @@
     <string notr="true">Ctrl+Alt+3</string>
    </property>
   </action>
-  <action name="actionViewTimeDisplayFormatSecondsSinceBeginningOfCapture">
+  <action name="actionViewTimeDisplayFormatSecondsSinceFirstCapturedPacket">
    <property name="checkable">
     <bool>true</bool>
    </property>
    <property name="text">
-    <string>Seconds Since Beginning of Capture</string>
+    <string>Seconds Since First Captured Packet</string>
    </property>
    <property name="toolTip">
     <string>Show packet times as the date and time of day.</string>

@@ -63,7 +63,6 @@
 #include "wsutil/utf8_entities.h"
 
 #ifdef _WIN32
-#  include "ui/win32/console_win32.h"
 #  include "wsutil/file_util.h"
 #  include <QMessageBox>
 #  include <QSettings>
@@ -311,12 +310,28 @@ const QFont MainApplication::monospaceFont(bool zoomed) const
 void MainApplication::setMonospaceFont(const char *font_string) {
 
     if (font_string && strlen(font_string) > 0) {
-        mono_font_.fromString(font_string);
-
-        // Only accept the font name if it actually exists.
-        if (mono_font_.family() == QFontInfo(mono_font_).family()) {
-            return;
+#if (QT_VERSION < QT_VERSION_CHECK(6, 0, 0))
+        // Qt 6's QFont::toString returns a value with 16 fields, e.g.
+        // Consolas,11,-1,5,400,0,0,0,0,0,0,0,0,0,0,1
+        // Qt 5's QFont::fromString expects a value with 10 fields, e.g.
+        // Consolas,10,-1,5,50,0,0,0,0,0
+        const char *fs_ptr = font_string;
+        int comma_count = 0;
+        while ((fs_ptr = strchr(fs_ptr, ',')) != NULL) {
+            fs_ptr++;
+            comma_count++;
         }
+        if (comma_count < 10) {
+#endif
+            mono_font_.fromString(font_string);
+
+            // Only accept the font name if it actually exists.
+            if (mono_font_.family() == QFontInfo(mono_font_).family()) {
+                return;
+            }
+#if (QT_VERSION < QT_VERSION_CHECK(6, 0, 0))
+        }
+#endif
     }
 
     // https://en.wikipedia.org/wiki/Category:Monospaced_typefaces
@@ -341,14 +356,18 @@ void MainApplication::setMonospaceFont(const char *font_string) {
 #if defined(Q_OS_WIN)
     const char *default_font = win_default_font;
     substitutes << win_alt_font << osx_default_font << osx_alt_fonts << x11_default_font << x11_alt_fonts << fallback_fonts;
+# if (QT_VERSION >= QT_VERSION_CHECK(6, 0, 0))
+    font_size_adjust = 1;
+# else // QT_VERSION
     font_size_adjust = 2;
+# endif // QT_VERSION
 #elif defined(Q_OS_MAC)
     const char *default_font = osx_default_font;
     substitutes << osx_alt_fonts << win_default_font << win_alt_font << x11_default_font << x11_alt_fonts << fallback_fonts;
-#else
+#else // Q_OS
     const char *default_font = x11_default_font;
     substitutes << x11_alt_fonts << win_default_font << win_alt_font << osx_default_font << osx_alt_fonts << fallback_fonts;
-#endif
+#endif // Q_OS
 
     mono_font_.setFamily(default_font);
     mono_font_.insertSubstitutions(default_font, substitutes);
@@ -646,7 +665,6 @@ MainApplication::MainApplication(int &argc,  char **argv) :
     Q_INIT_RESOURCE(i18n);
     Q_INIT_RESOURCE(layout);
     Q_INIT_RESOURCE(stock_icons);
-    Q_INIT_RESOURCE(wsicon);
     Q_INIT_RESOURCE(languages);
 
 #ifdef Q_OS_WIN
@@ -904,19 +922,6 @@ void MainApplication::clearDynamicMenuGroupItems()
     }
 }
 
-void MainApplication::initializeIcons()
-{
-    // Do this as late as possible in order to allow time for
-    // MimeDatabaseInitThread to do its work.
-    QList<int> icon_sizes = QList<int>() << 16 << 24 << 32 << 48 << 64 << 128 << 256 << 512 << 1024;
-    foreach (int icon_size, icon_sizes) {
-        QString icon_path = QString(":/wsicon/wsicon%1.png").arg(icon_size);
-        normal_icon_.addFile(icon_path);
-        icon_path = QString(":/wsicon/wsiconcap%1.png").arg(icon_size);
-        capture_icon_.addFile(icon_path);
-    }
-}
-
 QList<QAction *> MainApplication::dynamicMenuGroupItems(int group)
 {
     if (!dynamic_menu_groups_.contains(group)) {
@@ -1086,13 +1091,6 @@ _e_prefs *MainApplication::readConfigurationFiles(bool reset)
 
     /* Load libwireshark settings from the current profile. */
     prefs_p = epan_load_settings();
-
-#ifdef _WIN32
-    /* if the user wants a console to be always there, well, we should open one for him */
-    if (prefs_p->gui_console_open == console_open_always) {
-        create_console();
-    }
-#endif
 
     /* Read the capture filter file. */
     read_filter_list(CFILTER_LIST);

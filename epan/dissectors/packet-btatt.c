@@ -1187,6 +1187,11 @@ static int hf_btatt_fitness_machine_targeted_time_in_light_zone = -1;
 static int hf_btatt_fitness_machine_targeted_time_in_moderate_zone = -1;
 static int hf_btatt_fitness_machine_targeted_time_in_hard_zone = -1;
 static int hf_btatt_fitness_machine_targeted_time_in_maximum_zone = -1;
+static int hf_btatt_volume_setting = -1;
+static int hf_btatt_volume_mute = -1;
+static int hf_btatt_volume_change_counter = -1;
+static int hf_btatt_volume_control_point_procedure = -1;
+static int hf_btatt_volume_flags = -1;
 
 static int hf_request_in_frame = -1;
 static int hf_response_in_frame = -1;
@@ -3986,6 +3991,16 @@ static const value_string fitness_machine_spin_down_status_vals[] = {
     {0, NULL }
 };
 
+static const value_string ots_volume_control_point_procedure_vals[] = {
+    { 0x00, "Relative Volume Down" },
+    { 0x01, "Relative Volume Up" },
+    { 0x02, "Unmute/Relative Volume Down" },
+    { 0x03, "Unmute/Relative Volume Up" },
+    { 0x04, "Set Absolute Volume" },
+    { 0x05, "Unmute" },
+    { 0x06, "Mute" },
+    {0, NULL }
+};
 
 static const true_false_string control_point_mask_value_tfs = {
     "Leave as Default",
@@ -4532,13 +4547,13 @@ static void col_append_info_by_handle(packet_info *pinfo, guint16 handle, blueto
 
     if (!memcmp(&service_uuid, &uuid, sizeof(uuid))) {
         col_append_fstr(pinfo->cinfo, COL_INFO, ", Handle: 0x%04x (%s)",
-                handle, print_bluetooth_uuid(&uuid));
+                handle, print_bluetooth_uuid(pinfo->pool, &uuid));
     } else if (!memcmp(&characteristic_uuid, &uuid, sizeof(uuid))) {
         col_append_fstr(pinfo->cinfo, COL_INFO, ", Handle: 0x%04x (%s: %s)",
-                handle, print_bluetooth_uuid(&service_uuid), print_bluetooth_uuid(&uuid));
+                handle, print_bluetooth_uuid(pinfo->pool, &service_uuid), print_bluetooth_uuid(pinfo->pool, &uuid));
     } else {
         col_append_fstr(pinfo->cinfo, COL_INFO, ", Handle: 0x%04x (%s: %s: %s)",
-                handle, print_bluetooth_uuid(&service_uuid), print_bluetooth_uuid(&characteristic_uuid), print_bluetooth_uuid(&uuid));
+                handle, print_bluetooth_uuid(pinfo->pool, &service_uuid), print_bluetooth_uuid(pinfo->pool, &characteristic_uuid), print_bluetooth_uuid(pinfo->pool, &uuid));
     }
 }
 
@@ -4554,7 +4569,7 @@ static gint dissect_gatt_uuid(proto_tree *tree, packet_info *pinfo, tvbuff_t *tv
     } else if (tvb_reported_length_remaining(tvb, offset) == 16) {
         sub_item = proto_tree_add_item(tree, hf_btatt_uuid128, tvb, offset, 16, ENC_NA);
         sub_uuid = get_bluetooth_uuid(tvb, offset, 16);
-        proto_item_append_text(sub_item, " (%s)", print_bluetooth_uuid(&sub_uuid));
+        proto_item_append_text(sub_item, " (%s)", print_bluetooth_uuid(pinfo->pool, &sub_uuid));
         offset += 16;
     } else {
         sub_item = proto_tree_add_item(tree, hf_btatt_value, tvb, offset, -1, ENC_NA);
@@ -4594,7 +4609,7 @@ dissect_handle(proto_tree *tree, packet_info *pinfo, gint hf,
     proto_item_append_text(handle_item, " (");
     if (memcmp(&service_uuid, &attribute_uuid, sizeof(attribute_uuid))) {
         if (service_uuid.size == 2 || service_uuid.size == 16) {
-            proto_item_append_text(handle_item, "%s: ", print_bluetooth_uuid(&service_uuid));
+            proto_item_append_text(handle_item, "%s: ", print_bluetooth_uuid(pinfo->pool, &service_uuid));
             sub_tree = proto_item_add_subtree(handle_item, ett_btatt_handle);
 
             if (service_uuid.size == 2)
@@ -4608,7 +4623,7 @@ dissect_handle(proto_tree *tree, packet_info *pinfo, gint hf,
 
     if (memcmp(&characteristic_uuid, &attribute_uuid, sizeof(attribute_uuid))) {
         if (characteristic_uuid.size == 2 || characteristic_uuid.size == 16) {
-            proto_item_append_text(handle_item, "%s: ", print_bluetooth_uuid(&characteristic_uuid));
+            proto_item_append_text(handle_item, "%s: ", print_bluetooth_uuid(pinfo->pool, &characteristic_uuid));
             sub_tree = proto_item_add_subtree(handle_item, ett_btatt_handle);
 
             if (characteristic_uuid.size == 2)
@@ -4620,7 +4635,7 @@ dissect_handle(proto_tree *tree, packet_info *pinfo, gint hf,
         }
     }
 
-    proto_item_append_text(handle_item, "%s)", print_bluetooth_uuid(&attribute_uuid));
+    proto_item_append_text(handle_item, "%s)", print_bluetooth_uuid(pinfo->pool, &attribute_uuid));
     if (attribute_uuid.size == 2 || attribute_uuid.size == 16) {
         sub_tree = proto_item_add_subtree(handle_item, ett_btatt_handle);
 
@@ -4800,13 +4815,13 @@ dissect_attribute_value(proto_tree *tree, proto_item *patron_item, packet_info *
     if (p_get_proto_data(pinfo->pool, pinfo, proto_bluetooth, PROTO_DATA_BLUETOOTH_SERVICE_UUID) == NULL) {
         guint8 *value_data;
 
-        value_data = wmem_strdup(wmem_file_scope(), print_numeric_bluetooth_uuid(&uuid));
+        value_data = wmem_strdup(wmem_file_scope(), print_numeric_bluetooth_uuid(pinfo->pool, &uuid));
 
         p_add_proto_data(pinfo->pool, pinfo, proto_bluetooth, PROTO_DATA_BLUETOOTH_SERVICE_UUID, value_data);
     }
     /* hier wird subddisector aufgerufen */
     /* dort wird auch von einem neuen PAket ausgegangen, was es natürlich nicht ist, darum fehelern und kein subddisector aufgerufen*/
-    if (dissector_try_string(bluetooth_uuid_table, print_numeric_bluetooth_uuid(&uuid), tvb, pinfo, tree, att_data))
+    if (dissector_try_string(bluetooth_uuid_table, print_numeric_bluetooth_uuid(pinfo->pool, &uuid), tvb, pinfo, tree, att_data))
         return old_offset + length;
     else if (!uuid.bt_uuid) {
         if (bluetooth_gatt_has_no_parameter(att_data->opcode))
@@ -4834,10 +4849,10 @@ dissect_attribute_value(proto_tree *tree, proto_item *patron_item, packet_info *
         if (tvb_reported_length_remaining(tvb, offset) == 2) {
             proto_tree_add_item(tree, hf_btatt_uuid16, tvb, offset, 2, ENC_LITTLE_ENDIAN);
             sub_uuid = get_bluetooth_uuid(tvb, offset, 2);
-            proto_item_append_text(patron_item, ", UUID: %s", print_bluetooth_uuid(&sub_uuid));
+            proto_item_append_text(patron_item, ", UUID: %s", print_bluetooth_uuid(pinfo->pool, &sub_uuid));
             offset += 2;
 
-            col_append_fstr(pinfo->cinfo, COL_INFO, ", %s", print_bluetooth_uuid(&sub_uuid));
+            col_append_fstr(pinfo->cinfo, COL_INFO, ", %s", print_bluetooth_uuid(pinfo->pool, &sub_uuid));
 
             save_handle(pinfo, sub_uuid, handle, ATTRIBUTE_TYPE_SERVICE, bluetooth_data);
         }
@@ -4845,10 +4860,10 @@ dissect_attribute_value(proto_tree *tree, proto_item *patron_item, packet_info *
         {
             proto_tree_add_item(tree, hf_btatt_uuid128, tvb, offset, 16, ENC_NA);
             sub_uuid = get_bluetooth_uuid(tvb, offset, 16);
-            proto_item_append_text(patron_item, ", UUID128: %s", print_bluetooth_uuid(&sub_uuid));
+            proto_item_append_text(patron_item, ", UUID128: %s", print_bluetooth_uuid(pinfo->pool, &sub_uuid));
             offset += 16;
 
-            col_append_fstr(pinfo->cinfo, COL_INFO, ", %s", print_bluetooth_uuid(&sub_uuid));
+            col_append_fstr(pinfo->cinfo, COL_INFO, ", %s", print_bluetooth_uuid(pinfo->pool, &sub_uuid));
 
             save_handle(pinfo, sub_uuid, handle, ATTRIBUTE_TYPE_SERVICE, bluetooth_data);
         }
@@ -4878,10 +4893,10 @@ dissect_attribute_value(proto_tree *tree, proto_item *patron_item, packet_info *
 
         proto_tree_add_item(tree, hf_btatt_uuid16, tvb, offset, 2, ENC_LITTLE_ENDIAN);
         sub_uuid = get_bluetooth_uuid(tvb, offset, 2);
-        proto_item_append_text(patron_item, ", Included Handle: 0x%04x, UUID: %s", sub_handle, print_bluetooth_uuid(&sub_uuid));
+        proto_item_append_text(patron_item, ", Included Handle: 0x%04x, UUID: %s", sub_handle, print_bluetooth_uuid(pinfo->pool, &sub_uuid));
         offset += 2;
 
-        col_append_fstr(pinfo->cinfo, COL_INFO, ", %s", print_bluetooth_uuid(&sub_uuid));
+        col_append_fstr(pinfo->cinfo, COL_INFO, ", %s", print_bluetooth_uuid(pinfo->pool, &sub_uuid));
 
         save_handle(pinfo, sub_uuid, sub_handle, ATTRIBUTE_TYPE_OTHER, bluetooth_data);
 
@@ -4905,10 +4920,10 @@ dissect_attribute_value(proto_tree *tree, proto_item *patron_item, packet_info *
         if (tvb_reported_length_remaining(tvb, offset) == 16) {
             proto_tree_add_item(tree, hf_btatt_uuid128, tvb, offset, 16, ENC_NA);
             sub_uuid = get_bluetooth_uuid(tvb, offset, 16);
-            proto_item_append_text(patron_item, ", Characteristic Handle: 0x%04x, UUID128: %s", tvb_get_guint16(tvb, offset - 2, ENC_LITTLE_ENDIAN), print_bluetooth_uuid(&sub_uuid));
+            proto_item_append_text(patron_item, ", Characteristic Handle: 0x%04x, UUID128: %s", tvb_get_guint16(tvb, offset - 2, ENC_LITTLE_ENDIAN), print_bluetooth_uuid(pinfo->pool, &sub_uuid));
             offset += 16;
 
-            col_append_fstr(pinfo->cinfo, COL_INFO, ", %s", print_bluetooth_uuid(&sub_uuid));
+            col_append_fstr(pinfo->cinfo, COL_INFO, ", %s", print_bluetooth_uuid(pinfo->pool, &sub_uuid));
 
             save_handle(pinfo, sub_uuid, sub_handle, ATTRIBUTE_TYPE_CHARACTERISTIC, bluetooth_data);
         }
@@ -4916,10 +4931,10 @@ dissect_attribute_value(proto_tree *tree, proto_item *patron_item, packet_info *
         {
             proto_tree_add_item(tree, hf_btatt_uuid16, tvb, offset, 2, ENC_LITTLE_ENDIAN);
             sub_uuid = get_bluetooth_uuid(tvb, offset, 2);
-            proto_item_append_text(patron_item, ", Characteristic Handle: 0x%04x, UUID: %s", sub_handle, print_bluetooth_uuid(&sub_uuid));
+            proto_item_append_text(patron_item, ", Characteristic Handle: 0x%04x, UUID: %s", sub_handle, print_bluetooth_uuid(pinfo->pool, &sub_uuid));
             offset += 2;
 
-            col_append_fstr(pinfo->cinfo, COL_INFO, ", %s", print_bluetooth_uuid(&sub_uuid));
+            col_append_fstr(pinfo->cinfo, COL_INFO, ", %s", print_bluetooth_uuid(pinfo->pool, &sub_uuid));
 
             save_handle(pinfo, sub_uuid, sub_handle, ATTRIBUTE_TYPE_CHARACTERISTIC, bluetooth_data);
         } else {
@@ -5227,7 +5242,7 @@ dissect_attribute_value(proto_tree *tree, proto_item *patron_item, packet_info *
 
         characteristic_uuid = get_characteristic_uuid_from_handle(pinfo, handle, bluetooth_data);
 
-        characteristic_dissector_name = wmem_strdup_printf(pinfo->pool, "btgatt.uuid0x%s", print_numeric_bluetooth_uuid(&characteristic_uuid));
+        characteristic_dissector_name = wmem_strdup_printf(pinfo->pool, "btgatt.uuid0x%s", print_numeric_bluetooth_uuid(pinfo->pool, &characteristic_uuid));
         characteristic_dissector = find_dissector(characteristic_dissector_name);
 
         sub_item = proto_tree_add_item(tree, hf_btatt_valid_range_lower_inclusive_value, tvb, offset, tvb_reported_length_remaining(tvb, offset) / 2, ENC_NA);
@@ -10577,6 +10592,46 @@ dissect_attribute_value(proto_tree *tree, proto_item *patron_item, packet_info *
         }
 
         break;
+    case 0x2B7D: /* Volume State */
+        if (bluetooth_gatt_has_no_parameter(att_data->opcode))
+            break;
+
+        proto_tree_add_item(tree, hf_btatt_volume_setting, tvb, offset, 1, ENC_NA);
+        offset += 1;
+
+        proto_tree_add_item(tree, hf_btatt_volume_mute, tvb, offset, 1, ENC_NA);
+        offset += 1;
+
+        proto_tree_add_item(tree, hf_btatt_volume_change_counter, tvb, offset, 1, ENC_NA);
+        offset += 1;
+        break;
+    case 0x2B7E: /* Volume Control Point */
+        if (bluetooth_gatt_has_no_parameter(att_data->opcode))
+            break;
+
+        proto_tree_add_item(tree, hf_btatt_volume_control_point_procedure, tvb, offset, 1, ENC_NA);
+        opcode = tvb_get_guint8(tvb, offset);
+        offset += 1;
+
+        /* All procedures must have change counter */
+        if (opcode <= 0x06) {
+            proto_tree_add_item(tree, hf_btatt_volume_change_counter, tvb, offset, 1, ENC_NA);
+            offset += 1;
+        }
+
+        /* Set Absolute Volume also carries volume */
+        if (opcode == 0x04) {
+            proto_tree_add_item(tree, hf_btatt_volume_setting, tvb, offset, 1, ENC_NA);
+            offset += 1;
+        }
+        break;
+    case 0x2B7F: /* Volume Flags */
+        if (bluetooth_gatt_has_no_parameter(att_data->opcode))
+            break;
+
+        proto_tree_add_item(tree, hf_btatt_volume_flags, tvb, offset, 1, ENC_NA);
+        offset += 1;
+        break;
     case 0x2A62: /* Pulse Oximetry Control Point */ /* APPROVED: NO */
     case 0x2AE0: /* Average Current */
     case 0x2AE1: /* Average Voltage */
@@ -10664,6 +10719,7 @@ btatt_dissect_attribute_handle(guint16 handle, tvbuff_t *tvb, packet_info *pinfo
     if (attribute_handler == NULL)
         return 0;
 
+    /* XXX - dissector name, or protocol name? */
     attribute_name = dissector_handle_get_dissector_name(attribute_handler); /* abbrev */
     DISSECTOR_ASSERT(attribute_name);
 
@@ -11119,7 +11175,7 @@ dissect_btatt(tvbuff_t *tvb, packet_info *pinfo, proto_tree *tree, void *data)
                     offset += 2;
 
                     proto_item_append_text(sub_item, ", Handle: 0x%04x, UUID: %s",
-                            handle, print_bluetooth_uuid(&uuid));
+                            handle, print_bluetooth_uuid(pinfo->pool, &uuid));
 
                     save_handle(pinfo, uuid, handle, ATTRIBUTE_TYPE_OTHER, bluetooth_data);
 
@@ -11139,7 +11195,7 @@ dissect_btatt(tvbuff_t *tvb, packet_info *pinfo, proto_tree *tree, void *data)
                     offset += 16;
 
                     proto_item_append_text(sub_item, ", Handle: 0x%04x, UUID: %s",
-                            handle, print_bluetooth_uuid(&uuid));
+                            handle, print_bluetooth_uuid(pinfo->pool, &uuid));
 
                     save_handle(pinfo, uuid, handle, ATTRIBUTE_TYPE_OTHER, bluetooth_data);
 
@@ -12826,22 +12882,22 @@ proto_register_btatt(void)
         },
         {&hf_btatt_battery_power_state_level,
             {"Level", "btatt.battery_power_state.level",
-            FT_UINT8, BASE_HEX, VALS(battery_power_state_level_vals), 0x0,
+            FT_UINT8, BASE_HEX, VALS(battery_power_state_level_vals), 0xC0,
             NULL, HFILL}
         },
         {&hf_btatt_battery_power_state_charging,
             {"Charging", "btatt.battery_power_state.charging",
-            FT_UINT8, BASE_HEX, VALS(battery_power_state_charging_vals), 0x0,
+            FT_UINT8, BASE_HEX, VALS(battery_power_state_charging_vals), 0x30,
             NULL, HFILL}
         },
         {&hf_btatt_battery_power_state_discharging,
             {"Discharging", "btatt.battery_power_state.discharging",
-            FT_UINT8, BASE_HEX, VALS(battery_power_state_discharging_vals), 0x0,
+            FT_UINT8, BASE_HEX, VALS(battery_power_state_discharging_vals), 0x0C,
             NULL, HFILL}
         },
         {&hf_btatt_battery_power_state_present,
             {"Present", "btatt.battery_power_state.present",
-            FT_UINT8, BASE_HEX, VALS(battery_power_state_present_vals), 0x0,
+            FT_UINT8, BASE_HEX, VALS(battery_power_state_present_vals), 0x03,
             NULL, HFILL}
         },
         {&hf_btatt_temperature_type,
@@ -13931,12 +13987,12 @@ proto_register_btatt(void)
         },
         {&hf_btatt_glucose_measurement_glucose_concentration_kg_per_l,
             {"Glucose Concentration [kg/l]", "btatt.glucose_measurement.glucose_concentration.kg_per_l",
-            FT_IEEE_11073_SFLOAT, BASE_FLOAT, NULL, 0x0,
+            FT_IEEE_11073_SFLOAT, BASE_NONE, NULL, 0x0,
             NULL, HFILL}
         },
         {&hf_btatt_glucose_measurement_glucose_concentration_mol_per_l,
             {"Glucose Concentration [mol/l]", "btatt.glucose_measurement.glucose_concentration.mol_per_l",
-            FT_IEEE_11073_SFLOAT, BASE_FLOAT, NULL, 0x0,
+            FT_IEEE_11073_SFLOAT, BASE_NONE, NULL, 0x0,
             NULL, HFILL}
         },
         {&hf_btatt_glucose_measurement_type_and_sample_location,
@@ -14186,12 +14242,12 @@ proto_register_btatt(void)
         },
         {&hf_btatt_temperature_measurement_value_celsius,
             {"Value [Celsius]", "btatt.temperature_measurement.value.celsius",
-            FT_IEEE_11073_FLOAT, BASE_FLOAT, NULL, 0x00,
+            FT_IEEE_11073_FLOAT, BASE_NONE, NULL, 0x00,
             NULL, HFILL}
         },
         {&hf_btatt_temperature_measurement_value_fahrenheit,
             {"Value [Fahrenheit]", "btatt.temperature_measurement.value.fahrenheit",
-            FT_IEEE_11073_FLOAT, BASE_FLOAT, NULL, 0x00,
+            FT_IEEE_11073_FLOAT, BASE_NONE, NULL, 0x00,
             NULL, HFILL}
         },
         {&hf_btatt_temperature_measurement_timestamp,
@@ -14266,7 +14322,7 @@ proto_register_btatt(void)
         },
         {&hf_btatt_glucose_measurement_context_carbohydrate_kg,
             {"Carbohydrate [kg]", "btatt.glucose_measurement_context.carbohydrate.kg",
-            FT_IEEE_11073_SFLOAT, BASE_FLOAT, NULL, 0x0,
+            FT_IEEE_11073_SFLOAT, BASE_NONE, NULL, 0x0,
             NULL, HFILL}
         },
         {&hf_btatt_glucose_measurement_context_meal,
@@ -14306,17 +14362,17 @@ proto_register_btatt(void)
         },
         {&hf_btatt_glucose_measurement_context_medication_l,
             {"Medication [l]", "btatt.glucose_measurement_context.medication.l",
-            FT_IEEE_11073_SFLOAT, BASE_FLOAT, NULL, 0x0,
+            FT_IEEE_11073_SFLOAT, BASE_NONE, NULL, 0x0,
             NULL, HFILL}
         },
         {&hf_btatt_glucose_measurement_context_medication_kg,
             {"Medication [kg]", "btatt.glucose_measurement_context.medication.kg",
-            FT_IEEE_11073_SFLOAT, BASE_FLOAT, NULL, 0x0,
+            FT_IEEE_11073_SFLOAT, BASE_NONE, NULL, 0x0,
             NULL, HFILL}
         },
         {&hf_btatt_glucose_measurement_context_hba1c,
             {"HbA1c", "btatt.glucose_measurement_context.hba1c",
-            FT_IEEE_11073_SFLOAT, BASE_FLOAT, NULL, 0x0,
+            FT_IEEE_11073_SFLOAT, BASE_NONE, NULL, 0x0,
             NULL, HFILL}
         },
         {&hf_btatt_blood_pressure_measurement_flags,
@@ -14356,32 +14412,32 @@ proto_register_btatt(void)
         },
         {&hf_btatt_blood_pressure_measurement_compound_value_systolic_kpa,
             {"Systolic [kPa]", "btatt.blood_pressure_measurement.compound_value.systolic.kpa",
-            FT_IEEE_11073_SFLOAT, BASE_FLOAT, NULL, 0x0,
+            FT_IEEE_11073_SFLOAT, BASE_NONE, NULL, 0x0,
             NULL, HFILL}
         },
         {&hf_btatt_blood_pressure_measurement_compound_value_diastolic_kpa,
             {"Diastolic [kPa]", "btatt.blood_pressure_measurement.compound_value.diastolic.kpa",
-            FT_IEEE_11073_SFLOAT, BASE_FLOAT, NULL, 0x0,
+            FT_IEEE_11073_SFLOAT, BASE_NONE, NULL, 0x0,
             NULL, HFILL}
         },
         {&hf_btatt_blood_pressure_measurement_compound_value_mean_arterial_pressure_kpa,
             {"Arterial Pressure [kPa]", "btatt.blood_pressure_measurement.compound_value.arterial_pressure.kpa",
-            FT_IEEE_11073_SFLOAT, BASE_FLOAT, NULL, 0x0,
+            FT_IEEE_11073_SFLOAT, BASE_NONE, NULL, 0x0,
             NULL, HFILL}
         },
         {&hf_btatt_blood_pressure_measurement_compound_value_systolic_mmhg,
             {"Systolic [mmHg]", "btatt.blood_pressure_measurement.compound_value.systolic.mmhg",
-            FT_IEEE_11073_SFLOAT, BASE_FLOAT, NULL, 0x0,
+            FT_IEEE_11073_SFLOAT, BASE_NONE, NULL, 0x0,
             NULL, HFILL}
         },
         {&hf_btatt_blood_pressure_measurement_compound_value_diastolic_mmhg,
             {"Diastolic [mmHg]", "btatt.blood_pressure_measurement.compound_value.diastolic.mmhg",
-            FT_IEEE_11073_SFLOAT, BASE_FLOAT, NULL, 0x0,
+            FT_IEEE_11073_SFLOAT, BASE_NONE, NULL, 0x0,
             NULL, HFILL}
         },
         {&hf_btatt_blood_pressure_measurement_compound_value_mean_arterial_pressure_mmhg,
             {"Arterial Pressure [mmHg]", "btatt.blood_pressure_measurement.compound_value.arterial_pressure.mmhg",
-            FT_IEEE_11073_SFLOAT, BASE_FLOAT, NULL, 0x0,
+            FT_IEEE_11073_SFLOAT, BASE_NONE, NULL, 0x0,
             NULL, HFILL}
         },
         {&hf_btatt_blood_pressure_measurement_timestamp,
@@ -14391,7 +14447,7 @@ proto_register_btatt(void)
         },
         {&hf_btatt_blood_pressure_measurement_pulse_rate,
             {"Pulse Rate", "btatt.blood_pressure_measurement.pulse_rate",
-            FT_IEEE_11073_SFLOAT, BASE_FLOAT, NULL, 0x0,
+            FT_IEEE_11073_SFLOAT, BASE_NONE, NULL, 0x0,
             NULL, HFILL}
         },
         {&hf_btatt_blood_pressure_measurement_user_id,
@@ -15798,7 +15854,7 @@ proto_register_btatt(void)
         },
         {&hf_btatt_cgm_measurement_glucose_concentration,
             {"Glucose Concentration", "btatt.cgm_measurement.glucose_concentration",
-            FT_IEEE_11073_SFLOAT, BASE_FLOAT, NULL, 0x0,
+            FT_IEEE_11073_SFLOAT, BASE_NONE, NULL, 0x0,
             NULL, HFILL}
         },
         {&hf_btatt_cgm_measurement_time_offset,
@@ -15938,12 +15994,12 @@ proto_register_btatt(void)
         },
         {&hf_btatt_cgm_measurement_trend_information,
             {"Trend Information", "btatt.cgm_measurement.trend_information",
-            FT_IEEE_11073_SFLOAT, BASE_FLOAT, NULL, 0x0,
+            FT_IEEE_11073_SFLOAT, BASE_NONE, NULL, 0x0,
             NULL, HFILL}
         },
         {&hf_btatt_cgm_measurement_quality,
             {"Quality", "btatt.cgm_measurement.quality",
-            FT_IEEE_11073_SFLOAT, BASE_FLOAT, NULL, 0x0,
+            FT_IEEE_11073_SFLOAT, BASE_NONE, NULL, 0x0,
             NULL, HFILL}
         },
         {&hf_btatt_cgm_e2e_crc,
@@ -16098,7 +16154,7 @@ proto_register_btatt(void)
         },
         {&hf_btatt_cgm_specific_ops_control_point_calibration_glucose_concentration,
             {"Calibration Glucose Concentration", "btatt.cgm_specific_ops_control_point.operand.calibration_glucose_concentration",
-            FT_IEEE_11073_SFLOAT, BASE_FLOAT, NULL, 0x0,
+            FT_IEEE_11073_SFLOAT, BASE_NONE, NULL, 0x0,
             NULL, HFILL}
         },
         {&hf_btatt_cgm_specific_ops_control_point_calibration_time,
@@ -16148,12 +16204,12 @@ proto_register_btatt(void)
         },
         {&hf_btatt_cgm_specific_ops_control_point_operand_alert_level,
             {"Alert Level [mg/dL]", "btatt.cgm_specific_ops_control_point.operand.alert_level",
-            FT_IEEE_11073_SFLOAT, BASE_FLOAT, NULL, 0x0,
+            FT_IEEE_11073_SFLOAT, BASE_NONE, NULL, 0x0,
             NULL, HFILL}
         },
         {&hf_btatt_cgm_specific_ops_control_point_operand_alert_level_rate,
             {"Alert Level Rate [mg/dL/min]", "btatt.cgm_specific_ops_control_point.operand.alert_level_rate",
-            FT_IEEE_11073_SFLOAT, BASE_FLOAT, NULL, 0x0,
+            FT_IEEE_11073_SFLOAT, BASE_NONE, NULL, 0x0,
             NULL, HFILL}
         },
         {&hf_btatt_cgm_specific_ops_control_point_request_opcode,
@@ -16573,12 +16629,12 @@ proto_register_btatt(void)
         },
         {&hf_btatt_plx_spo2,
             {"SpO2", "btatt.plxs.spot_check_measurement.spo2",
-            FT_IEEE_11073_SFLOAT, BASE_FLOAT, NULL, 0x0,
+            FT_IEEE_11073_SFLOAT, BASE_NONE, NULL, 0x0,
             NULL, HFILL}
         },
         {&hf_btatt_plx_pulse_rate,
             {"Pulse Rate", "btatt.plxs.spot_check_measurement.pulse_rate",
-            FT_IEEE_11073_SFLOAT, BASE_FLOAT, NULL, 0x0,
+            FT_IEEE_11073_SFLOAT, BASE_NONE, NULL, 0x0,
             NULL, HFILL}
         },
         {&hf_btatt_plx_spot_check_measurement_timestamp,
@@ -16743,7 +16799,7 @@ proto_register_btatt(void)
         },
         {&hf_btatt_plx_pulse_amplitude_index,
             {"Pulse Amplitude Index", "btatt.plxs.spot_check_measurement.pulse_amplitude_index",
-            FT_IEEE_11073_SFLOAT, BASE_FLOAT, NULL, 0x0,
+            FT_IEEE_11073_SFLOAT, BASE_NONE, NULL, 0x0,
             NULL, HFILL}
         },
         {&hf_btatt_plx_spo2pr_spot_check,
@@ -17432,6 +17488,31 @@ proto_register_btatt(void)
             FT_UINT16, BASE_DEC | BASE_UNIT_STRING, &units_seconds, 0x0,
             NULL, HFILL}
         },
+        {&hf_btatt_volume_setting,
+            {"Volume Setting", "btatt.volume_control.volume_setting",
+            FT_UINT8, BASE_DEC, NULL, 0x0,
+            NULL, HFILL}
+        },
+        {&hf_btatt_volume_mute,
+            {"Mute", "btatt.volume_control.mute",
+            FT_UINT8, BASE_DEC, NULL, 0x0,
+            NULL, HFILL}
+        },
+        {&hf_btatt_volume_change_counter,
+            {"Change counter", "btatt.volume_control.change_counter",
+            FT_UINT8, BASE_DEC, NULL, 0x0,
+            NULL, HFILL}
+        },
+        {&hf_btatt_volume_control_point_procedure,
+            {"Volume Control Point Procedure", "btatt.volume_control.procedure",
+            FT_UINT8, BASE_HEX, VALS(ots_volume_control_point_procedure_vals), 0x0,
+            NULL, HFILL}
+        },
+        {&hf_btatt_volume_flags,
+            {"Flags", "btatt.volume_control.volume_flags",
+            FT_UINT8, BASE_DEC, NULL, 0x0,
+            NULL, HFILL}
+        },
         {&hf_request_in_frame,
             {"Request in Frame", "btatt.request_in_frame",
             FT_FRAMENUM, BASE_NONE, FRAMENUM_TYPE(FT_FRAMENUM_REQUEST), 0x0,
@@ -17450,22 +17531,22 @@ proto_register_btatt(void)
           { "Message fragment",               "btatt.fragment",
             FT_FRAMENUM, BASE_NONE, NULL, 0x00, NULL, HFILL }},
         { &hf_btatt_fragment_overlap,
-          { "Message fragment overlap",       "btatt.fragmet.overlap",
+          { "Message fragment overlap",       "btatt.fragment.overlap",
             FT_BOOLEAN, BASE_NONE, NULL, 0x00, NULL, HFILL }},
         { &hf_btatt_fragment_overlap_conflicts,
-          { "Message fragment overlapping with conflicting data", "btatt.fragmet.overlap.conflicts",
+          { "Message fragment overlapping with conflicting data", "btatt.fragment.overlap.conflicts",
             FT_BOOLEAN, BASE_NONE, NULL, 0x00, NULL, HFILL }},
         { &hf_btatt_fragment_multiple_tails,
-          { "Message has multiple tail fragments", "btatt.fragmet.multiple_tails",
+          { "Message has multiple tail fragments", "btatt.fragment.multiple_tails",
             FT_BOOLEAN, BASE_NONE, NULL, 0x00, NULL, HFILL }},
         { &hf_btatt_fragment_too_long_fragment,
-          { "Message fragment too long",      "btatt.fragmet.too_long_fragment",
+          { "Message fragment too long",      "btatt.fragment.too_long_fragment",
             FT_BOOLEAN, BASE_NONE, NULL, 0x00, NULL, HFILL }},
         { &hf_btatt_fragment_error,
-          { "Message defragmentation error",  "btatt.fragmet.error",
+          { "Message defragmentation error",  "btatt.fragment.error",
             FT_FRAMENUM, BASE_NONE, NULL, 0x00, NULL, HFILL }},
         { &hf_btatt_fragment_count,
-          { "Message fragment count",         "btatt.fragmet.count",
+          { "Message fragment count",         "btatt.fragment.count",
             FT_UINT32, BASE_DEC, NULL, 0x00, NULL, HFILL }},
         { &hf_btatt_reassembled_in,
           { "Reassembled in",                 "btatt.reassembled.in",
@@ -17497,7 +17578,7 @@ proto_register_btatt(void)
         { &ei_btatt_mtu_exceeded,           { "btatt.mtu.exceeded",                   PI_PROTOCOL,  PI_WARN, "Packet size exceed current ATT_MTU", EXPFILL }},
         { &ei_btatt_mtu_full,               { "btatt.mtu.full",                       PI_PROTOCOL,  PI_NOTE, "Reached ATT_MTU. Attribute value may be longer.", EXPFILL }},
         { &ei_btatt_consent_out_of_bounds,  { "btatt.consent.out_of_bounds",          PI_PROTOCOL,  PI_WARN, "Consent Code is out of bounds (0 to 9999)", EXPFILL }},
-        { &ei_btatt_cgm_size_too_small,     { "btatt.cgm_measurement.size.too_small", PI_PROTOCOL,  PI_WARN, "Size too small (6 or geater)", EXPFILL }},
+        { &ei_btatt_cgm_size_too_small,     { "btatt.cgm_measurement.size.too_small", PI_PROTOCOL,  PI_WARN, "Size too small (6 or greater)", EXPFILL }},
         { &ei_btatt_opcode_invalid_request, { "btatt.opcode.invalid_request" ,        PI_PROTOCOL,  PI_WARN, "Invalid request", EXPFILL }},
         { &ei_btatt_opcode_invalid_response,{ "btatt.opcode.invalid_response",        PI_PROTOCOL,  PI_WARN, "Invalid response", EXPFILL }},
         { &ei_btatt_invalid_usage,          { "btatt.invalid_usage",                  PI_PROTOCOL,  PI_WARN, "Invalid usage of this characteristic with this opcode", EXPFILL }},

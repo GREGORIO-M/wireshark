@@ -23,6 +23,7 @@ set(WIRESHARK_WIDGET_HEADERS
 	widgets/capture_filter_edit.h
 	widgets/clickable_label.h
 	widgets/copy_from_profile_button.h
+	widgets/detachable_tabwidget.h
 	widgets/display_filter_combo.h
 	widgets/display_filter_edit.h
 	widgets/dissector_tables_view.h
@@ -49,6 +50,9 @@ set(WIRESHARK_WIDGET_HEADERS
 	widgets/stock_icon_tool_button.h
 	widgets/syntax_line_edit.h
 	widgets/tabnav_tree_view.h
+	widgets/traffic_tab.h
+	widgets/traffic_tree.h
+	widgets/traffic_types_list.h
 	widgets/wireless_timeline.h
 	widgets/wireshark_file_dialog.h
 )
@@ -83,6 +87,7 @@ set(WIRESHARK_UTILS_HEADERS
 
 set(WIRESHARK_MODEL_HEADERS
 	models/astringlist_list_model.h
+	models/atap_data_model.h
 	models/cache_proxy_model.h
 	models/coloring_rules_delegate.h
 	models/coloring_rules_model.h
@@ -173,6 +178,7 @@ set(WIRESHARK_QT_HEADERS
 	funnel_string_dialog.h
 	funnel_text_dialog.h
 	geometry_state_dialog.h
+	glib_mainloop_on_qeventloop.h
 	gsm_map_summary_dialog.h
 	iax2_analysis_dialog.h
 	import_text_dialog.h
@@ -271,6 +277,7 @@ set(WIRESHARK_WIDGET_SRCS
 	widgets/capture_filter_edit.cpp
 	widgets/clickable_label.cpp
 	widgets/copy_from_profile_button.cpp
+	widgets/detachable_tabwidget.cpp
 	widgets/display_filter_combo.cpp
 	widgets/display_filter_edit.cpp
 	widgets/dissector_tables_view.cpp
@@ -297,6 +304,9 @@ set(WIRESHARK_WIDGET_SRCS
 	widgets/stock_icon_tool_button.cpp
 	widgets/syntax_line_edit.cpp
 	widgets/tabnav_tree_view.cpp
+	widgets/traffic_tab.cpp
+	widgets/traffic_tree.cpp
+	widgets/traffic_types_list.cpp
 	widgets/wireless_timeline.cpp
 	widgets/wireshark_file_dialog.cpp
 )
@@ -328,6 +338,7 @@ set(WIRESHARK_UTILS_SRCS
 
 set(WIRESHARK_MODEL_SRCS
 	models/astringlist_list_model.cpp
+	models/atap_data_model.cpp
 	models/cache_proxy_model.cpp
 	models/coloring_rules_delegate.cpp
 	models/coloring_rules_model.cpp
@@ -412,6 +423,7 @@ set(WIRESHARK_QT_SRC
 	funnel_string_dialog.cpp
 	funnel_text_dialog.cpp
 	geometry_state_dialog.cpp
+	glib_mainloop_on_qeventloop.cpp
 	iax2_analysis_dialog.cpp
 	import_text_dialog.cpp
 	interface_frame.cpp
@@ -517,9 +529,14 @@ set(WIRESHARK_QT_TAP_SRC
 	${WIRESHARK_CUSTOM_TAP_SRC}
 )
 
-set(WIRESHARK_QT_FILES
+set(WIRESHARK_QT_NONGENERATED_SRC
 	${WIRESHARK_QT_SRC}
 	${WIRESHARK_QT_TAP_SRC}
+	${WIRESHARK_MODEL_SRCS}
+	${WIRESHARK_UTILS_SRCS}
+	${WIRESHARK_MANAGER_SRCS}
+	${WIRESHARK_3RD_PARTY_WIDGET_SRCS}
+	${WIRESHARK_WIDGET_SRCS}
 )
 
 set(WIRESHARK_QT_UI
@@ -679,7 +696,7 @@ add_custom_target(
 set_target_properties(translations PROPERTIES FOLDER "UI")
 
 set_source_files_properties(
-	${WIRESHARK_QT_FILES}
+	${WIRESHARK_QT_NONGENERATED_SRC}
 	PROPERTIES
 	COMPILE_FLAGS "${WERROR_COMMON_FLAGS}"
 )
@@ -717,12 +734,7 @@ add_library(qtui OBJECT
 	${WIRESHARK_UTILS_HEADERS}
 	${WIRESHARK_MODEL_HEADERS}
 
-	${WIRESHARK_QT_SRC}
-	${WIRESHARK_WIDGET_SRCS}
-	${WIRESHARK_3RD_PARTY_WIDGET_SRCS}
-	${WIRESHARK_MANAGER_SRCS}
-	${WIRESHARK_UTILS_SRCS}
-	${WIRESHARK_MODEL_SRCS}
+	${WIRESHARK_QT_NONGENERATED_SRC}
 
 	# For AUTOUIC and AUTORCC.
 	${WIRESHARK_QT_UI}

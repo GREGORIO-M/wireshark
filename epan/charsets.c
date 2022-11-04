@@ -21,8 +21,12 @@
 
 #include "charsets.h"
 
-/* REPLACEMENT CHARACTER */
-#define UNREPL 0xFFFD
+/*
+ * 6-character abbreviation for "Unicode REPLACEMENT CHARACTER", so it
+ * takes up the same amount of space as the 6-character hex values for
+ * Basic Multilingual Plane code points in the tables below.
+ */
+#define UNREPL UNICODE_REPLACEMENT_CHARACTER
 
 /*
  * Wikipedia's "Character encoding" template, giving a pile of character
@@ -77,7 +81,7 @@ get_ascii_string(wmem_allocator_t *scope, const guint8 *ptr, gint length)
         if (ch < 0x80)
             wmem_strbuf_append_c(str, ch);
         else
-            wmem_strbuf_append_unichar(str, UNREPL);
+            wmem_strbuf_append_unichar_repl(str);
         ptr++;
         length--;
     }
@@ -120,7 +124,7 @@ get_utf_8_string(wmem_allocator_t *scope, const guint8 *ptr, gint length)
         if (ch < 0x80) {
             wmem_strbuf_append_c(str, ch);
         } else if (ch < 0xc2 || ch > 0xf4) {
-            wmem_strbuf_append_unichar(str, UNREPL);
+            wmem_strbuf_append_unichar_repl(str);
         } else {
             prev = ptr;
             if (ch < 0xe0) { /* 110xxxxx, 2 byte char */
@@ -130,25 +134,25 @@ get_utf_8_string(wmem_allocator_t *scope, const guint8 *ptr, gint length)
                 ptr++;
                 length--;
                 if (length < 1) {
-                    wmem_strbuf_append_unichar(str, UNREPL);
+                    wmem_strbuf_append_unichar_repl(str);
                     continue;
                 }
                 switch (ch) {
                     case 0xe0:
                         if (*ptr < 0xa0 || *ptr > 0xbf) {
-                            wmem_strbuf_append_unichar(str, UNREPL);
+                            wmem_strbuf_append_unichar_repl(str);
                             continue;
                         }
                         break;
                     case 0xed:
                         if (*ptr < 0x80 || *ptr > 0x9f) {
-                            wmem_strbuf_append_unichar(str, UNREPL);
+                            wmem_strbuf_append_unichar_repl(str);
                             continue;
                         }
                         break;
                     default:
                         if (*ptr < 0x80 || *ptr > 0xbf) {
-                            wmem_strbuf_append_unichar(str, UNREPL);
+                            wmem_strbuf_append_unichar_repl(str);
                             continue;
                         }
                 }
@@ -157,36 +161,36 @@ get_utf_8_string(wmem_allocator_t *scope, const guint8 *ptr, gint length)
                 ptr++;
                 length--;
                 if (length < 1) {
-                    wmem_strbuf_append_unichar(str, UNREPL);
+                    wmem_strbuf_append_unichar_repl(str);
                     continue;
                 }
                 switch (ch) {
                     case 0xf0:
                         if (*ptr < 0x90 || *ptr > 0xbf) {
-                            wmem_strbuf_append_unichar(str, UNREPL);
+                            wmem_strbuf_append_unichar_repl(str);
                             continue;
                         }
                         break;
                     case 0xf4:
                         if (*ptr < 0x80 || *ptr > 0x8f) {
-                            wmem_strbuf_append_unichar(str, UNREPL);
+                            wmem_strbuf_append_unichar_repl(str);
                             continue;
                         }
                         break;
                     default:
                         if (*ptr < 0x80 || *ptr > 0xbf) {
-                            wmem_strbuf_append_unichar(str, UNREPL);
+                            wmem_strbuf_append_unichar_repl(str);
                             continue;
                         }
                 }
                 ptr++;
                 length--;
                 if (length < 1) {
-                    wmem_strbuf_append_unichar(str, UNREPL);
+                    wmem_strbuf_append_unichar_repl(str);
                     continue;
                 }
                 if (*ptr < 0x80 || *ptr > 0xbf) {
-                    wmem_strbuf_append_unichar(str, UNREPL);
+                    wmem_strbuf_append_unichar_repl(str);
                     continue;
                 }
             }
@@ -194,11 +198,11 @@ get_utf_8_string(wmem_allocator_t *scope, const guint8 *ptr, gint length)
             ptr++;
             length--;
             if (length < 1) {
-                wmem_strbuf_append_unichar(str, UNREPL);
+                wmem_strbuf_append_unichar_repl(str);
                 continue;
             }
             if (*ptr < 0x80 || *ptr > 0xbf) {
-                wmem_strbuf_append_unichar(str, UNREPL);
+                wmem_strbuf_append_unichar_repl(str);
                 continue;
             } else {
                 wmem_strbuf_append_len(str, prev, unichar_len);
@@ -257,7 +261,7 @@ get_iso_646_string(wmem_allocator_t *scope, const guint8 *ptr, gint length, cons
         if (ch < 0x80)
             wmem_strbuf_append_unichar(str, table[ch]);
         else
-            wmem_strbuf_append_unichar(str, UNREPL);
+            wmem_strbuf_append_unichar_repl(str);
         ptr++;
         length--;
     }
@@ -801,11 +805,6 @@ get_unichar2_string(wmem_allocator_t *scope, const guint8 *ptr, gint length, con
  * Encoding parameter should be ENC_BIG_ENDIAN or ENC_LITTLE_ENDIAN.
  *
  * Specify length in bytes.
- *
- * XXX - should map lead and trail surrogate values to REPLACEMENT
- * CHARACTERs (0xFFFD)?
- * XXX - if there are an odd number of bytes, should put a
- * REPLACEMENT CHARACTER at the end.
  */
 guint8 *
 get_ucs_2_string(wmem_allocator_t *scope, const guint8 *ptr, gint length, const guint encoding)
@@ -822,13 +821,16 @@ get_ucs_2_string(wmem_allocator_t *scope, const guint8 *ptr, gint length, const 
         }else{
             uchar = pletoh16(ptr + i);
         }
-        wmem_strbuf_append_unichar(strbuf, uchar);
+        wmem_strbuf_append_unichar_validated(strbuf, uchar);
     }
 
     /*
-     * XXX - if i < length, this means we were handed an odd
-     * number of bytes, so we're not a valid UCS-2 string.
+     * If i < length, this means we were handed an odd number of bytes;
+     * insert a REPLACEMENT CHARACTER to mark the error.
      */
+    if (i < length) {
+        wmem_strbuf_append_unichar_repl(strbuf);
+    }
     return (guint8 *) wmem_strbuf_finalize(strbuf);
 }
 
@@ -842,8 +844,6 @@ get_ucs_2_string(wmem_allocator_t *scope, const guint8 *ptr, gint length, const 
  * Encoding parameter should be ENC_BIG_ENDIAN or ENC_LITTLE_ENDIAN.
  *
  * Specify length in bytes.
- *
- * XXX - should map invalid Unicode characters to REPLACEMENT CHARACTERs.
  */
 guint8 *
 get_utf_16_string(wmem_allocator_t *scope, const guint8 *ptr, gint length, const guint encoding)
@@ -932,12 +932,6 @@ get_utf_16_string(wmem_allocator_t *scope, const guint8 *ptr, gint length, const
  * Encoding parameter should be ENC_BIG_ENDIAN or ENC_LITTLE_ENDIAN
  *
  * Specify length in bytes
- *
- * XXX - should map lead and trail surrogate values to a "substitute"
- * UTF-8 character?
- * XXX - should map code points > 10FFFF to REPLACEMENT CHARACTERs.
- * XXX - if the number of bytes isn't a multiple of 4, should put a
- * REPLACEMENT CHARACTER at the end.
  */
 guint8 *
 get_ucs_4_string(wmem_allocator_t *scope, const guint8 *ptr, gint length, const guint encoding)
@@ -954,14 +948,17 @@ get_ucs_4_string(wmem_allocator_t *scope, const guint8 *ptr, gint length, const 
         else
             uchar = pletoh32(ptr + i);
 
-        wmem_strbuf_append_unichar(strbuf, uchar);
+        wmem_strbuf_append_unichar_validated(strbuf, uchar);
     }
 
     /*
-     * XXX - if i < length, this means we were handed a number
-     * of bytes that's not a multiple of 4, so we're not a valid
-     * UCS-4 string.
+     * if i < length, this means we were handed a number of bytes
+     * that's not a multiple of 4, so not a valid UCS-4 string.
+     * Insert a REPLACEMENT CHARACTER for the remaining bytes.
      */
+    if (i < length) {
+        wmem_strbuf_append_unichar(strbuf, UNREPL);
+    }
     return (guint8 *)wmem_strbuf_finalize(strbuf);
 }
 
@@ -1272,13 +1269,11 @@ get_etsi_ts_102_221_annex_a_string(wmem_allocator_t *scope, const guint8 *ptr,
             /*
              * XXX - if saw_escape is true, this is bogus.
              *
-             * XXX - should map lead and trail surrogate values to
-             * REPLACEMENT CHARACTERs (0xFFFD)?
              * XXX - if there are an odd number of bytes, should put a
              * REPLACEMENT CHARACTER at the end.
              */
             uchar = ucs2_base + (byte & 0x7f);
-            wmem_strbuf_append_unichar(strbuf, uchar);
+            wmem_strbuf_append_unichar_validated(strbuf, uchar);
         }
     }
 
@@ -1341,119 +1336,6 @@ get_ascii_7bits_string(wmem_allocator_t *scope, const guint8 *ptr,
     }
 
     return (guint8 *)wmem_strbuf_finalize(strbuf);
-}
-
-/* ASCII/EBCDIC conversion tables from
- * https://web.archive.org/web/20060813174742/http://www.room42.com/store/computer_center/code_tables.shtml
- */
-#if 0
-static const guint8 ASCII_translate_EBCDIC [ 256 ] = {
-    0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08,
-    0x09, 0x0A, 0x0B, 0x0C, 0x0D, 0x0E, 0x0F,
-    0x10, 0x11, 0x12, 0x13, 0x14, 0x15, 0x16, 0x17, 0x18,
-    0x19, 0x1A, 0x1B, 0x1C, 0x1D, 0x1E, 0x1F,
-    0x40, 0x5A, 0x7F, 0x7B, 0x5B, 0x6C, 0x50, 0x7D, 0x4D,
-    0x5D, 0x5C, 0x4E, 0x6B, 0x60, 0x4B, 0x61,
-    0xF0, 0xF1, 0xF2, 0xF3, 0xF4, 0xF5, 0xF6, 0xF7, 0xF8,
-    0xF9, 0x7A, 0x5E, 0x4C, 0x7E, 0x6E, 0x6F,
-    0x7C, 0xC1, 0xC2, 0xC3, 0xC4, 0xC5, 0xC6, 0xC7, 0xC8,
-    0xC9, 0xD1, 0xD2, 0xD3, 0xD4, 0xD5, 0xD6,
-    0xD7, 0xD8, 0xD9, 0xE2, 0xE3, 0xE4, 0xE5, 0xE6, 0xE7,
-    0xE8, 0xE9, 0xAD, 0xE0, 0xBD, 0x5F, 0x6D,
-    0x7D, 0x81, 0x82, 0x83, 0x84, 0x85, 0x86, 0x87, 0x88,
-    0x89, 0x91, 0x92, 0x93, 0x94, 0x95, 0x96,
-    0x97, 0x98, 0x99, 0xA2, 0xA3, 0xA4, 0xA5, 0xA6, 0xA7,
-    0xA8, 0xA9, 0xC0, 0x6A, 0xD0, 0xA1, 0x4B,
-    0x4B, 0x4B, 0x4B, 0x4B, 0x4B, 0x4B, 0x4B, 0x4B, 0x4B,
-    0x4B, 0x4B, 0x4B, 0x4B, 0x4B, 0x4B, 0x4B,
-    0x4B, 0x4B, 0x4B, 0x4B, 0x4B, 0x4B, 0x4B, 0x4B, 0x4B,
-    0x4B, 0x4B, 0x4B, 0x4B, 0x4B, 0x4B, 0x4B,
-    0x4B, 0x4B, 0x4B, 0x4B, 0x4B, 0x4B, 0x4B, 0x4B, 0x4B,
-    0x4B, 0x4B, 0x4B, 0x4B, 0x4B, 0x4B, 0x4B,
-    0x4B, 0x4B, 0x4B, 0x4B, 0x4B, 0x4B, 0x4B, 0x4B, 0x4B,
-    0x4B, 0x4B, 0x4B, 0x4B, 0x4B, 0x4B, 0x4B,
-    0x4B, 0x4B, 0x4B, 0x4B, 0x4B, 0x4B, 0x4B, 0x4B, 0x4B,
-    0x4B, 0x4B, 0x4B, 0x4B, 0x4B, 0x4B, 0x4B,
-    0x4B, 0x4B, 0x4B, 0x4B, 0x4B, 0x4B, 0x4B, 0x4B, 0x4B,
-    0x4B, 0x4B, 0x4B, 0x4B, 0x4B, 0x4B, 0x4B,
-    0x4B, 0x4B, 0x4B, 0x4B, 0x4B, 0x4B, 0x4B, 0x4B, 0x4B,
-    0x4B, 0x4B, 0x4B, 0x4B, 0x4B, 0x4B, 0x4B,
-    0x4B, 0x4B, 0x4B, 0x4B, 0x4B, 0x4B, 0x4B, 0x4B, 0x4B,
-    0x4B, 0x4B, 0x4B, 0x4B, 0x4B, 0x4B, 0x4B
-};
-
-void
-ASCII_to_EBCDIC(guint8 *buf, guint bytes)
-{
-    guint    i;
-    guint8    *bufptr;
-
-    bufptr = buf;
-
-    for (i = 0; i < bytes; i++, bufptr++) {
-        *bufptr = ASCII_translate_EBCDIC[*bufptr];
-    }
-}
-
-guint8
-ASCII_to_EBCDIC1(guint8 c)
-{
-    return ASCII_translate_EBCDIC[c];
-}
-#endif
-
-static const guint8 EBCDIC_translate_ASCII [ 256 ] = {
-    0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07,
-    0x08, 0x09, 0x0A, 0x0B, 0x0C, 0x0D, 0x0E, 0x0F,
-    0x10, 0x11, 0x12, 0x13, 0x14, 0x15, 0x16, 0x17,
-    0x18, 0x19, 0x1A, 0x1B, 0x1C, 0x1D, 0x1E, 0x1F,
-    0x20, 0x21, 0x22, 0x23, 0x24, 0x25, 0x26, 0x27,
-    0x28, 0x29, 0x2A, 0x2B, 0x2C, 0x2D, 0x2E, 0x2F,
-    0x2E, 0x2E, 0x32, 0x33, 0x34, 0x35, 0x36, 0x37,
-    0x38, 0x39, 0x3A, 0x3B, 0x3C, 0x3D, 0x2E, 0x3F,
-    0x20, 0x2E, 0x2E, 0x2E, 0x2E, 0x2E, 0x2E, 0x2E,
-    0x2E, 0x2E, 0x2E, 0x2E, 0x3C, 0x28, 0x2B, 0x7C,
-    0x26, 0x2E, 0x2E, 0x2E, 0x2E, 0x2E, 0x2E, 0x2E,
-    0x2E, 0x2E, 0x21, 0x24, 0x2A, 0x29, 0x3B, 0x5E,
-    0x2D, 0x2F, 0x2E, 0x2E, 0x2E, 0x2E, 0x2E, 0x2E,
-    0x2E, 0x2E, 0x7C, 0x2C, 0x25, 0x5F, 0x3E, 0x3F,
-    0x2E, 0x2E, 0x2E, 0x2E, 0x2E, 0x2E, 0x2E, 0x2E,
-    0x2E, 0x2E, 0x3A, 0x23, 0x40, 0x27, 0x3D, 0x22,
-    0x2E, 0x61, 0x62, 0x63, 0x64, 0x65, 0x66, 0x67,
-    0x68, 0x69, 0x2E, 0x2E, 0x2E, 0x2E, 0x2E, 0x2E,
-    0x2E, 0x6A, 0x6B, 0x6C, 0x6D, 0x6E, 0x6F, 0x70,
-    0x71, 0x72, 0x2E, 0x2E, 0x2E, 0x2E, 0x2E, 0x2E,
-    0x2E, 0x7E, 0x73, 0x74, 0x75, 0x76, 0x77, 0x78,
-    0x79, 0x7A, 0x2E, 0x2E, 0x2E, 0x5B, 0x2E, 0x2E,
-    0x2E, 0x2E, 0x2E, 0x2E, 0x2E, 0x2E, 0x2E, 0x2E,
-    0x2E, 0x2E, 0x2E, 0x2E, 0x2E, 0x5D, 0x2E, 0x2E,
-    0x7B, 0x41, 0x42, 0x43, 0x44, 0x45, 0x46, 0x47,
-    0x48, 0x49, 0x2E, 0x2E, 0x2E, 0x2E, 0x2E, 0x2E,
-    0x7D, 0x4A, 0x4B, 0x4C, 0x4D, 0x4E, 0x4F, 0x50,
-    0x51, 0x52, 0x2E, 0x2E, 0x2E, 0x2E, 0x2E, 0x2E,
-    0x5C, 0x2E, 0x53, 0x54, 0x55, 0x56, 0x57, 0x58,
-    0x59, 0x5A, 0x2E, 0x2E, 0x2E, 0x2E, 0x2E, 0x2E,
-    0x30, 0x31, 0x32, 0x33, 0x34, 0x35, 0x36, 0x37,
-    0x38, 0x39, 0x2E, 0x2E, 0x2E, 0x2E, 0x2E, 0x2E
-};
-
-void
-EBCDIC_to_ASCII(guint8 *buf, guint bytes)
-{
-    guint   i;
-    guint8 *bufptr;
-
-    bufptr = buf;
-
-    for (i = 0; i < bytes; i++, bufptr++) {
-        *bufptr = EBCDIC_translate_ASCII[*bufptr];
-    }
-}
-
-guint8
-EBCDIC_to_ASCII1(guint8 c)
-{
-    return EBCDIC_translate_ASCII[c];
 }
 
 /* Tables for EBCDIC code pages */
@@ -1609,7 +1491,7 @@ get_string_enc_iconv(wmem_allocator_t *scope, const guint8 *ptr, gint length, co
             switch (errno) {
                 case EINVAL:
                     /* Incomplete sequence at the end, not an error */
-                    wmem_strbuf_append_unichar(str, UNREPL);
+                    wmem_strbuf_append_unichar_repl(str);
                     inbytes = 0;
                     break;
                 case E2BIG:
@@ -1627,7 +1509,7 @@ get_string_enc_iconv(wmem_allocator_t *scope, const guint8 *ptr, gint length, co
                     max_subpart = MAX(1, max_subpart-1);
                     ptr += max_subpart;
                     inbytes -= max_subpart;
-                    wmem_strbuf_append_unichar(str, UNREPL);
+                    wmem_strbuf_append_unichar_repl(str);
                     outptr = tempstr;
                     outbytes = tempstr_size;
                     break;

@@ -42,6 +42,7 @@
 
 
 #include <config.h>
+#define WS_LOG_DOMAIN  LOG_DOMAIN_MAIN
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -1134,13 +1135,13 @@ cleanup_capture_info(capture_info *cf_info)
 }
 
 static void
-count_ipv4_address(const guint addr _U_, const gchar *name _U_)
+count_ipv4_address(const guint addr _U_, const gchar *name _U_, const gboolean static_entry _U_)
 {
     num_ipv4_addresses++;
 }
 
 static void
-count_ipv6_address(const void *addrp _U_, const gchar *name _U_)
+count_ipv6_address(const void *addrp _U_, const gchar *name _U_, const gboolean static_entry _U_)
 {
     num_ipv6_addresses++;
 }
@@ -1610,6 +1611,8 @@ main(int argc, char *argv[])
 
     /* Early logging command-line initialization. */
     ws_log_parse_args(&argc, argv, vcmdarg_err, INVALID_OPTION);
+
+    ws_noisy("Finished log init and parsing command line log arguments");
 
     /* Get the decimal point. */
     decimal_point = g_strdup(localeconv()->decimal_point);

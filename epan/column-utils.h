@@ -1,5 +1,6 @@
 /** @file
  * Definitions for column utility structures and routines
+ * Utility routines used by packet*.c
  *
  * Wireshark - Network traffic analyzer
  * By Gerald Combs <gerald@wireshark.org>
@@ -19,6 +20,10 @@
 #ifdef __cplusplus
 extern "C" {
 #endif /* __cplusplus */
+
+#define COL_MAX_LEN 2048
+#define COL_MAX_INFO_LEN 4096
+#define COL_CUSTOM_PRIME_REGEX " *([^ \\|]+) *(?:(?:\\|\\|)|(?:or)| *$){1}"
 
 struct epan_dissect;
 
@@ -92,61 +97,13 @@ enum {
   NUM_COL_FMTS        /**< 50) Should always be last */
 };
 
-/** Allocate all the data structures for constructing column data, given
- * the number of columns.
- *
- * Internal, don't use this in dissectors!
- */
-WS_DLL_PUBLIC void col_setup(column_info *cinfo, const gint num_cols);
-
-/** Cleanup all the data structures for constructing column data;
- * undoes the alocations that col_setup() does.
- *
- * Internal, don't use this in dissectors!
- */
-WS_DLL_PUBLIC void col_cleanup(column_info *cinfo);
-
-/** Initialize the data structures for constructing column data.
- *
- * Internal, don't use this in dissectors!
- */
-extern void col_init(column_info *cinfo, const struct epan_session *epan);
-
-/** Fill in all columns of the given packet which are based on values from frame_data.
- *
- * Internal, don't use this in dissectors!
- */
-WS_DLL_PUBLIC void col_fill_in_frame_data(const frame_data *fd, column_info *cinfo, const gint col, gboolean const fill_col_exprs);
-
-/** Fill in all columns of the given packet.
- *
- * Internal, don't use this in dissectors!
- */
-WS_DLL_PUBLIC void col_fill_in(packet_info *pinfo, const gboolean fill_col_exprs, const gboolean fill_fd_colums);
-
-/** Fill in columns if we got an error reading the packet.
- * We set most columns to "???", and set the Info column to an error
- * message.
- *
- * Internal, don't use this in dissectors!
- */
-WS_DLL_PUBLIC void col_fill_in_error(column_info *cinfo, frame_data *fdata, const gboolean fill_col_exprs, const gboolean fill_fd_colums);
-
-/** Check to see if our column data has changed, e.g. we have new request/response info.
- *
- * Internal, don't use this in dissectors!
- */
-WS_DLL_PUBLIC gboolean	col_data_changed(void);
-
-/* Utility routines used by packet*.c */
-
 /** Are the columns writable?
  *
  * @param cinfo the current packet row
  * @param col the writable column, -1 for checking the state of all columns
  * @return TRUE if it's writable, FALSE if not
  */
-WS_DLL_PUBLIC gboolean	col_get_writable(column_info *cinfo, const gint col);
+WS_DLL_PUBLIC gboolean col_get_writable(column_info *cinfo, const gint col);
 
 /** Set the columns writable.
  *
@@ -193,7 +150,10 @@ WS_DLL_PUBLIC const gchar *col_get_text(column_info *cinfo, const gint col);
  */
 WS_DLL_PUBLIC void col_clear(column_info *cinfo, const gint col);
 
-/** Set (replace) the text of a column element, the text won't be copied.
+/** Set (replace) the text of a column element, the text won't be formatted or copied.
+ *
+ * Use this for simple static strings like protocol names. Don't use for untrusted strings
+ * or strings that may contain unprintable characters.
  *
  * Usually used to set const strings!
  *
@@ -203,7 +163,9 @@ WS_DLL_PUBLIC void col_clear(column_info *cinfo, const gint col);
  */
 WS_DLL_PUBLIC void col_set_str(column_info *cinfo, const gint col, const gchar * str);
 
-/** Add (replace) the text of a column element, the text will be copied.
+/** Add (replace) the text of a column element, the text will be formatted and copied.
+ *
+ * Unprintable characters according to isprint() are escaped.
  *
  * @param cinfo the current packet row
  * @param col the column to use, e.g. COL_INFO
@@ -213,9 +175,12 @@ WS_DLL_PUBLIC void col_add_str(column_info *cinfo, const gint col, const gchar *
 
 /* terminator argument for col_add_lstr() function */
 #define COL_ADD_LSTR_TERMINATOR (const char *) -1
+
 WS_DLL_PUBLIC void col_add_lstr(column_info *cinfo, const gint el, const gchar *str, ...);
 
 /** Add (replace) the text of a column element, the text will be formatted and copied.
+ *
+ * Unprintable characters according to isprint() are escaped.
  *
  * Same function as col_add_str() but using a printf-like format string.
  *
@@ -227,29 +192,9 @@ WS_DLL_PUBLIC void col_add_lstr(column_info *cinfo, const gint el, const gchar *
 WS_DLL_PUBLIC void col_add_fstr(column_info *cinfo, const gint col, const gchar *format, ...)
     G_GNUC_PRINTF(3, 4);
 
-/** For internal Wireshark use only.  Not to be called from dissectors. */
-void col_custom_set_edt(struct epan_dissect *edt, column_info *cinfo);
-
-/** For internal Wireshark use only.  Not to be called from dissectors. */
-WS_DLL_PUBLIC
-void col_custom_prime_edt(struct epan_dissect *edt, column_info *cinfo);
-
-/** For internal Wireshark use only.  Not to be called from dissectors. */
-WS_DLL_PUBLIC
-gboolean have_custom_cols(column_info *cinfo);
-
-/** For internal Wireshark use only.  Not to be called from dissectors. */
-WS_DLL_PUBLIC
-gboolean have_field_extractors(void);
-
-/** For internal Wireshark use only.  Not to be called from dissectors. */
-WS_DLL_PUBLIC
-gboolean col_has_time_fmt(column_info *cinfo, const gint col);
-/** For internal Wireshark use only.  Not to be called from dissectors. */
-WS_DLL_PUBLIC
-gboolean col_based_on_frame_data(column_info *cinfo, const gint col);
-
-/** Append the given text to a column element, the text will be copied.
+/** Append the given text to a column element, the text will be formatted and copied.
+ *
+ * Unprintable characters according to isprint() are escaped.
  *
  * @param cinfo the current packet row
  * @param col the column to use, e.g. COL_INFO
@@ -295,6 +240,8 @@ WS_DLL_PUBLIC void col_append_lstr(column_info *cinfo, const gint el, const gcha
 
 /** Append the given text to a column element, the text will be formatted and copied.
  *
+ * Unprintable characters according to isprint() are escaped.
+ *
  * Same function as col_append_str() but using a printf-like format string.
  *
  * @param cinfo the current packet row
@@ -307,6 +254,8 @@ WS_DLL_PUBLIC void col_append_fstr(column_info *cinfo, const gint col, const gch
 
 /** Prepend the given text to a column element, the text will be formatted and copied.
  *
+ * Unprintable characters according to isprint() are escaped.
+ *
  * @param cinfo the current packet row
  * @param col the column to use, e.g. COL_INFO
  * @param format the format string
@@ -315,7 +264,10 @@ WS_DLL_PUBLIC void col_append_fstr(column_info *cinfo, const gint col, const gch
 WS_DLL_PUBLIC void col_prepend_fstr(column_info *cinfo, const gint col, const gchar *format, ...)
     G_GNUC_PRINTF(3, 4);
 
-/**Prepend the given text to a column element, the text will be formatted and copied.
+/** Prepend the given text to a column element, the text will be formatted and copied.
+ *
+ * Unprintable characters according to isprint() are escaped.
+ *
  * This function is similar to col_prepend_fstr() but this function will
  * unconditionally set a fence to the end of the prepended data even if there
  * were no fence before.
@@ -328,6 +280,8 @@ WS_DLL_PUBLIC void col_prepend_fence_fstr(column_info *cinfo, const gint col, co
 
 /** Append the given text (prepended by a separator) to a column element.
  *
+ * Unprintable characters according to isprint() are escaped.
+ *
  * Much like col_append_str() but will prepend the given separator if the column isn't empty.
  *
  * @param cinfo the current packet row
@@ -339,6 +293,8 @@ WS_DLL_PUBLIC void col_append_sep_str(column_info *cinfo, const gint col, const 
 		const gchar *str);
 
 /** Append the given text (prepended by a separator) to a column element.
+ *
+ * Unprintable characters according to isprint() are escaped.
  *
  * Much like col_append_fstr() but will prepend the given separator if the column isn't empty.
  *
@@ -362,7 +318,7 @@ WS_DLL_PUBLIC void col_append_sep_fstr(column_info *cinfo, const gint col, const
  * @param fieldname	the fieldname to use for creating a filter (when
  *			  applying/preparing/copying as filter)
  */
-WS_DLL_PUBLIC void 	col_set_time(column_info *cinfo, const int col,
+WS_DLL_PUBLIC void col_set_time(column_info *cinfo, const int col,
 			const nstime_t *ts, const char *fieldname);
 
 WS_DLL_PUBLIC void set_fd_time(const struct epan_session *epan, frame_data *fd, gchar *buf);

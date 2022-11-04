@@ -39,7 +39,7 @@
 #include "except.h"
 #include "packet.h"
 #include "prefs.h"
-#include "column-utils.h"
+#include "column-info.h"
 #include "tap.h"
 #include "addr_resolv.h"
 #include "oids.h"
@@ -175,6 +175,12 @@ static void
 epan_plugin_init(gpointer data, gpointer user_data _U_)
 {
 	((epan_plugin *)data)->init();
+}
+
+static void
+epan_plugin_post_init(gpointer data, gpointer user_data _U_)
+{
+	((epan_plugin *)data)->post_init();
 }
 
 static void
@@ -315,6 +321,7 @@ epan_init(register_cb cb, gpointer client_data, gboolean load_plugins)
 #ifdef HAVE_LUA
 		wslua_init(cb, client_data);
 #endif
+		g_slist_foreach(epan_plugins, epan_plugin_post_init, NULL);
 	}
 	CATCH(DissectorError) {
 		/*

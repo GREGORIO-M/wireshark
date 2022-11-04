@@ -47,6 +47,7 @@
 #define OUI_SONY_ERICSSON_3 0x000FDE    /* Sony Ericsson Mobile Communications AB */
 #define OUI_FORTINET        0x00090F    /* Fortinet */
 #define OUI_CIMETRICS       0x001090    /* Cimetrics, Inc. */
+#define OUI_MOJO_ARISTA     0x001174    /* Arista Networks (Formerly Mojo Networks) */
 #define OUI_IEEE_802_3      0x00120F    /* IEEE 802.3 */
 #define OUI_MEDIA_ENDPOINT  0x0012BB    /* Media (TIA TR-41 Committee) */
 #define OUI_SONY_ERICSSON_4 0x0012EE    /* Sony Ericsson Mobile Communications AB */
@@ -64,6 +65,7 @@
 #define OUI_IEEE_802_1QBG   0x001B3F    /* IEEE 802.1 Qbg */
 #define OUI_NINTENDO        0x001F32
 #define OUI_TURBOCELL       0x0020F6    /* KarlNet, who brought you Turbocell */
+#define OUI_ODVA            0x00216C    /* ODVA */
 #define OUI_AVAYA           0x00400D    /* Avaya */
 #define OUI_CISCOWL         0x004096    /* Cisco Wireless (Aironet) */
 #define OUI_MARVELL         0x005043    /* Marvell Semiconductor */
@@ -81,6 +83,7 @@
 #define OUI_APPLE_ATALK     0x080007    /* Appletalk */
 #define OUI_HP              0x080009    /* Hewlett-Packard */
 #define OUI_CERN            0x080030    /* CERN, The European Organization for Nuclear Research */
+#define OUI_WISUN           0x0C5A9E    /* Wi-SUN */
 #define OUI_IEEE_C37_238    0x1C129D    /* IEEE PES PSRC/SUB Working Group H7/Sub C7 (IEEE PC37.238) */
 #define OUI_HYTEC_GER       0x30B216    /* Hytec Geraetebau GmbH */
 #define OUI_ZIGBEE          0x4A191B    /* ZigBee Alliance */
@@ -92,6 +95,7 @@
 #define OUI_ONOS            0xA42305    /* Open Networking Laboratory (ONOS) */
 #define OUI_3GPP2           0xCF0002    /* 3GPP2 */
 #define OUI_AVAYA_EXTREME2  0xD88466    /* Avaya Extreme Fabric */
+#define OUI_ALCATEL_LUCENT  0xDC0856    /* Alcatel-Lucent */
 
 #endif
 

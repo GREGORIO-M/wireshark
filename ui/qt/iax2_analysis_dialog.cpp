@@ -604,7 +604,7 @@ void Iax2AnalysisDialog::tapReset(void *tapinfoptr)
     iax2_analysis_dialog->resetStatistics();
 }
 
-tap_packet_status Iax2AnalysisDialog::tapPacket(void *tapinfoptr, packet_info *pinfo, struct epan_dissect *, const void *iax2info_ptr)
+tap_packet_status Iax2AnalysisDialog::tapPacket(void *tapinfoptr, packet_info *pinfo, struct epan_dissect *, const void *iax2info_ptr, tap_flags_t)
 {
     Iax2AnalysisDialog *iax2_analysis_dialog = dynamic_cast<Iax2AnalysisDialog *>((Iax2AnalysisDialog*)tapinfoptr);
     if (!iax2_analysis_dialog) return TAP_PACKET_DONT_REDRAW;
@@ -1226,9 +1226,9 @@ void Iax2AnalysisDialog::graphClicked(QMouseEvent *event)
     updateWidgets();
     if (event->button() == Qt::RightButton) {
 #if QT_VERSION >= QT_VERSION_CHECK(6, 0 ,0)
-        graph_ctx_menu_.exec(event->globalPosition().toPoint());
+        graph_ctx_menu_.popup(event->globalPosition().toPoint());
 #else
-        graph_ctx_menu_.exec(event->globalPos());
+        graph_ctx_menu_.popup(event->globalPos());
 #endif
     }
 }

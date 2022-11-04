@@ -8,6 +8,7 @@
  */
 
 #include "syntax-tree.h"
+#include <wsutil/str_util.h>
 
 static gpointer
 string_dup(gconstpointer string)
@@ -27,6 +28,26 @@ string_tostr(const void *data, gboolean pretty _U_)
 	return g_strdup(data);
 }
 
+static gpointer
+gstring_dup(gconstpointer value)
+{
+	const GString *gs = value;
+	return g_string_new_len(gs->str, gs->len);
+}
+
+static void
+gstring_free(gpointer value)
+{
+	g_string_free(value, TRUE);
+}
+
+static char *
+gstring_tostr(const void *value, gboolean pretty _U_)
+{
+	const GString *gs = value;
+	return ws_escape_string_len(NULL, gs->str, gs->len, false);
+}
+
 
 void
 sttype_register_string(void)
@@ -35,18 +56,9 @@ sttype_register_string(void)
 		STTYPE_STRING,
 		"STRING",
 		NULL,
-		string_free,
-		string_dup,
-		string_tostr
-	};
-
-	static sttype_t unparsed_type = {
-		STTYPE_UNPARSED,
-		"UNPARSED",
-		NULL,
-		string_free,
-		string_dup,
-		string_tostr
+		gstring_free,
+		gstring_dup,
+		gstring_tostr
 	};
 
 	static sttype_t literal_type = {
@@ -59,7 +71,6 @@ sttype_register_string(void)
 	};
 
 	sttype_register(&string_type);
-	sttype_register(&unparsed_type);
 	sttype_register(&literal_type);
 }
 

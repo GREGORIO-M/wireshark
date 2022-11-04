@@ -22,25 +22,23 @@ extern ftype_t* type_list[FT_NUM_TYPES];
 	ws_assert(ftype < FT_NUM_TYPES);	\
 	result = type_list[ftype];
 
-enum ft_result {
-	FT_OK,
-	FT_ERROR,
-};
-
 typedef void (*FvalueNewFunc)(fvalue_t*);
 typedef void (*FvalueCopyFunc)(fvalue_t*, const fvalue_t*);
 typedef void (*FvalueFreeFunc)(fvalue_t*);
 
 typedef gboolean (*FvalueFromLiteral)(fvalue_t*, const char*, gboolean, gchar **);
-typedef gboolean (*FvalueFromString)(fvalue_t*, const char*, gchar **);
+typedef gboolean (*FvalueFromString)(fvalue_t*, const char*, size_t, gchar **);
 typedef gboolean (*FvalueFromCharConst)(fvalue_t*, unsigned long, gchar **);
 typedef char *(*FvalueToStringRepr)(wmem_allocator_t *, const fvalue_t*, ftrepr_t, int field_display);
+
+typedef enum ft_result (*FvalueToUnsignedInteger64Func)(const fvalue_t*, guint64 *);
+typedef enum ft_result (*FvalueToSignedInteger64Func)(const fvalue_t*, gint64 *);
 
 typedef void (*FvalueSetByteArrayFunc)(fvalue_t*, GByteArray *);
 typedef void (*FvalueSetBytesFunc)(fvalue_t*, const guint8 *);
 typedef void (*FvalueSetGuidFunc)(fvalue_t*, const e_guid_t *);
 typedef void (*FvalueSetTimeFunc)(fvalue_t*, const nstime_t *);
-typedef void (*FvalueSetStringFunc)(fvalue_t*, const gchar *value);
+typedef void (*FvalueSetStrbufFunc)(fvalue_t*, wmem_strbuf_t *);
 typedef void (*FvalueSetProtocolFunc)(fvalue_t*, tvbuff_t *value, const gchar *name, int length);
 typedef void (*FvalueSetUnsignedIntegerFunc)(fvalue_t*, guint32);
 typedef void (*FvalueSetSignedIntegerFunc)(fvalue_t*, gint32);
@@ -48,16 +46,20 @@ typedef void (*FvalueSetUnsignedInteger64Func)(fvalue_t*, guint64);
 typedef void (*FvalueSetSignedInteger64Func)(fvalue_t*, gint64);
 typedef void (*FvalueSetFloatingFunc)(fvalue_t*, gdouble);
 
-typedef gpointer (*FvalueGetFunc)(fvalue_t*);
+typedef const guint8 *(*FvalueGetBytesFunc)(fvalue_t*);
+typedef const e_guid_t *(*FvalueGetGuidFunc)(fvalue_t*);
+typedef const nstime_t *(*FvalueGetTimeFunc)(fvalue_t*);
+typedef const wmem_strbuf_t *(*FvalueGetStrbufFunc)(fvalue_t*);
+typedef tvbuff_t *(*FvalueGetProtocolFunc)(fvalue_t*);
 typedef guint32 (*FvalueGetUnsignedIntegerFunc)(fvalue_t*);
 typedef gint32  (*FvalueGetSignedIntegerFunc)(fvalue_t*);
 typedef guint64 (*FvalueGetUnsignedInteger64Func)(fvalue_t*);
 typedef gint64 (*FvalueGetSignedInteger64Func)(fvalue_t*);
 typedef double (*FvalueGetFloatingFunc)(fvalue_t*);
 
-typedef int (*FvalueCmp)(const fvalue_t*, const fvalue_t*);
-typedef gboolean (*FvalueContains)(const fvalue_t*, const fvalue_t*);
-typedef gboolean (*FvalueMatches)(const fvalue_t*, const ws_regex_t*);
+typedef enum ft_result (*FvalueCmp)(const fvalue_t*, const fvalue_t*, int*);
+typedef enum ft_result (*FvalueContains)(const fvalue_t*, const fvalue_t*, gboolean*);
+typedef enum ft_result (*FvalueMatches)(const fvalue_t*, const ws_regex_t*, gboolean*);
 
 typedef gboolean (*FvalueIs)(const fvalue_t*);
 typedef guint (*FvalueLen)(fvalue_t*);
@@ -78,27 +80,34 @@ struct _ftype_t {
 	FvalueFromCharConst	val_from_charconst;
 	FvalueToStringRepr	val_to_string_repr;
 
+	FvalueToUnsignedInteger64Func		val_to_uinteger64;
+	FvalueToSignedInteger64Func		val_to_sinteger64;
+
 	union {
-		FvalueSetByteArrayFunc	set_value_byte_array;
-		FvalueSetBytesFunc	set_value_bytes;
-		FvalueSetGuidFunc	set_value_guid;
-		FvalueSetTimeFunc	set_value_time;
-		FvalueSetStringFunc	set_value_string;
-		FvalueSetProtocolFunc	set_value_protocol;
+		FvalueSetByteArrayFunc		set_value_byte_array;
+		FvalueSetBytesFunc		set_value_bytes;
+		FvalueSetGuidFunc		set_value_guid;
+		FvalueSetTimeFunc		set_value_time;
+		FvalueSetStrbufFunc		set_value_strbuf;
+		FvalueSetProtocolFunc		set_value_protocol;
 		FvalueSetUnsignedIntegerFunc	set_value_uinteger;
 		FvalueSetSignedIntegerFunc	set_value_sinteger;
 		FvalueSetUnsignedInteger64Func	set_value_uinteger64;
 		FvalueSetSignedInteger64Func	set_value_sinteger64;
-		FvalueSetFloatingFunc	set_value_floating;
+		FvalueSetFloatingFunc		set_value_floating;
 	} set_value;
 
 	union {
-		FvalueGetFunc		get_value_ptr;
+		FvalueGetBytesFunc		get_value_bytes;
+		FvalueGetGuidFunc		get_value_guid;
+		FvalueGetTimeFunc		get_value_time;
+		FvalueGetStrbufFunc		get_value_strbuf;
+		FvalueGetProtocolFunc		get_value_protocol;
 		FvalueGetUnsignedIntegerFunc	get_value_uinteger;
 		FvalueGetSignedIntegerFunc	get_value_sinteger;
 		FvalueGetUnsignedInteger64Func	get_value_uinteger64;
 		FvalueGetSignedInteger64Func	get_value_sinteger64;
-		FvalueGetFloatingFunc	get_value_floating;
+		FvalueGetFloatingFunc		get_value_floating;
 	} get_value;
 
 	FvalueCmp		cmp_order;
@@ -132,6 +141,7 @@ void ftype_register_string(void);
 void ftype_register_time(void);
 void ftype_register_tvbuff(void);
 
+/* For debugging. */
 void ftype_register_pseudofields_bytes(int proto);
 void ftype_register_pseudofields_double(int proto);
 void ftype_register_pseudofields_ieee_11073_float(int proto);
@@ -139,6 +149,7 @@ void ftype_register_pseudofields_integer(int proto);
 void ftype_register_pseudofields_ipv4(int proto);
 void ftype_register_pseudofields_ipv6(int proto);
 void ftype_register_pseudofields_guid(int proto);
+void ftype_register_pseudofields_none(int proto);
 void ftype_register_pseudofields_string(int proto);
 void ftype_register_pseudofields_time(int proto);
 void ftype_register_pseudofields_tvbuff(int proto);

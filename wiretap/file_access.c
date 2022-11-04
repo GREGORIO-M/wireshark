@@ -90,6 +90,7 @@
 #include "busmaster.h"
 #include "blf.h"
 #include "eri_enb_log.h"
+#include "autosar_dlt.h"
 
 
 /*
@@ -161,6 +162,7 @@ static const struct file_extension_info file_type_extensions_base[] = {
 	{ "Ixia IxVeriWave .vwr Raw 802.11 Capture", TRUE, "vwr" },
 	{ "CAM Inspector file", TRUE, "camins" },
 	{ "BLF file", TRUE, "blf" },
+	{ "AUTOSAR DLT file", TRUE, "dlt" },
 	{ "MPEG files", FALSE, "mpg;mp3" },
 	{ "Transport-Neutral Encapsulation Format", FALSE, "tnef" },
 	{ "JPEG/JFIF files", FALSE, "jpg;jpeg;jfif" },
@@ -355,7 +357,7 @@ wtap_get_all_capture_file_extensions_list(void)
  * know that Wireshark can open the file:
  *	1) resources/freedesktop/org.wireshark.Wireshark-mime.xml (for freedesktop.org environments)
  *	2) packaging/macosx/WiresharkInfo.plist.in (for macOS)
- *	3) packaging/nsis/AdditionalTasksPage.ini, packaging/nsis/common.nsh,
+ *	3) packaging/nsis/AdditionalTasksPage.ini, packaging/nsis/wireshark-common.nsh,
  *	   and packaging/wix/ComponentGroups.wxi (for Windows)
  *
  * If your file format has an expected extension (e.g., ".pcap") then you
@@ -388,6 +390,7 @@ static const struct open_info open_info_base[] = {
 	/* Gammu DCT3 trace must come before MIME files as it's XML based*/
 	{ "Gammu DCT3 trace",                       OPEN_INFO_MAGIC,     dct3trace_open,           NULL,       NULL, NULL },
 	{ "BLF Logfile",                            OPEN_INFO_MAGIC,     blf_open,                 "blf",      NULL, NULL },
+	{ "AUTOSAR DLT Logfile",                    OPEN_INFO_MAGIC,     autosar_dlt_open,         "dlt",      NULL, NULL },
 	{ "MIME Files Format",                      OPEN_INFO_MAGIC,     mime_file_open,           NULL,       NULL, NULL },
 	{ "Micropross mplog",                       OPEN_INFO_MAGIC,     mplog_open,               "mplog",    NULL, NULL },
 	{ "Unigraf DPA-400 capture",                OPEN_INFO_MAGIC,     dpa400_open,              "bin",      NULL, NULL },
@@ -1236,6 +1239,10 @@ wtap_fdreopen(wtap *wth, const char *filename, int *err)
 	if (!file_fdreopen(wth->random_fh, filename)) {
 		*err = errno;
 		return FALSE;
+	}
+	if (strcmp(filename, wth->pathname) != 0) {
+		g_free(wth->pathname);
+		wth->pathname = g_strdup(filename);
 	}
 	return TRUE;
 }

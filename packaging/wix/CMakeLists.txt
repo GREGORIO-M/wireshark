@@ -69,14 +69,12 @@ else()
 	message(FATAL_ERROR "Your mysterious moon-man architecture \"${WIRESHARK_TARGET_PLATFORM}\" frightens and confuses us.")
 endif()
 
-set(PRODUCT_VERSION ${PROJECT_MAJOR_VERSION}.${PROJECT_MINOR_VERSION}.${PROJECT_PATCH_VERSION}.${PROJECT_BUILD_VERSION})
-
 # To do:
 # - Sync the various version names between CMake and Wix.
-# - Set CMakeLists.txt version strings in tools/make-version.pl
+# - Set CMakeLists.txt version strings in tools/make-version.py
 # - Add a VERSION_EXTRA cmake option
 set (VERSION "${PROJECT_VERSION}")
-set (PRODUCT_VERSION=${VERSION_MAJOR}.${VERSION_MINOR}.${VERSION_MICRO}.${VERSION_BUILD})
+set(PRODUCT_VERSION ${PROJECT_MAJOR_VERSION}.${PROJECT_MINOR_VERSION}.${PROJECT_PATCH_VERSION}.${PROJECT_BUILD_VERSION})
 
 # Use the merge module that comes with our version of Visual Studio
 if(MSVC_VERSION GREATER_EQUAL 1930)
@@ -315,16 +313,17 @@ macro( ADD_WIX_PACKAGE_TARGET )
 		)
 
 		# Build WiX package dependencies. We build the package in
-		# two stages so that wix_package below doesn't trigger any
+		# two stages so that wireshark_wix below doesn't trigger any
 		# dependencies that might clobber any signed executables.
-		add_custom_target(wix_package_prep
+		# XXX Rename this to wireshark_wix_prep
+		add_custom_target(wireshark_wix_prep
 			DEPENDS
 				${WIX_FILES}
 				copy_data_files
 				user_guide_html
 				faq_html
 		)
-		set_target_properties(wix_package_prep PROPERTIES
+		set_target_properties(wireshark_wix_prep PROPERTIES
 			FOLDER "Packaging"
 			EXCLUDE_FROM_DEFAULT_BUILD True
 		)
@@ -332,7 +331,8 @@ macro( ADD_WIX_PACKAGE_TARGET )
 		# Dump the installer into
 		# ${CMAKE_CURRENT_SOURCE_DIR}/packaging/wix
 		# Note that executables and DLLs *must* be built separately
-		add_custom_target(wix_package
+		# XXX Rename this to wireshark_wix
+		add_custom_target(wireshark_wix
 			COMMAND ${WIX_CANDLE_EXECUTABLE} ${WIX_CANDLE_DEFINES}
 				$<$<CONFIG:Debug>:-dBUNDLE_DEBUG_DLLS>
 				${WIX_SOURCE_FILES}
@@ -341,7 +341,7 @@ macro( ADD_WIX_PACKAGE_TARGET )
 			COMMAND ${WIX_LIGHT_EXECUTABLE} ${WIX_LIGHT_DEFINES} ${WIX_OUT_FILES}
 			WORKING_DIRECTORY ${_wix_binary_dir}
 		)
-		set_target_properties(wix_package PROPERTIES
+		set_target_properties(wireshark_wix PROPERTIES
 			FOLDER "Packaging"
 			EXCLUDE_FROM_DEFAULT_BUILD True
 		)

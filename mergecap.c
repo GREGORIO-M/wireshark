@@ -12,6 +12,7 @@
  */
 
 #include <config.h>
+#define WS_LOG_DOMAIN  LOG_DOMAIN_MAIN
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -66,9 +67,9 @@ print_usage(FILE *output)
     fprintf(output, "                    an empty \"-I\" option will list the merge modes.\n");
     fprintf(output, "\n");
     fprintf(output, "Miscellaneous:\n");
-    fprintf(output, "  -h                display this help and exit.\n");
-    fprintf(output, "  -v                verbose output.\n");
-    fprintf(output, "  -V                print version information and exit.\n");
+    fprintf(output, "  -h, --help        display this help and exit.\n");
+    fprintf(output, "  -V                verbose output.\n");
+    fprintf(output, "  -v, --version     print version information and exit.\n");
 }
 
 /*
@@ -200,7 +201,7 @@ main(int argc, char *argv[])
     int                 opt;
     static const struct ws_option long_options[] = {
         {"help", ws_no_argument, NULL, 'h'},
-        {"version", ws_no_argument, NULL, 'V'},
+        {"version", ws_no_argument, NULL, 'v'},
         {0, 0, 0, 0 }
     };
     gboolean            do_append          = FALSE;
@@ -224,6 +225,8 @@ main(int argc, char *argv[])
 
     /* Early logging command-line initialization. */
     ws_log_parse_args(&argc, argv, vcmdarg_err, 1);
+
+    ws_noisy("Finished log init and parsing command line log arguments");
 
 #ifdef _WIN32
     create_app_running_mutex();
@@ -293,11 +296,11 @@ main(int argc, char *argv[])
                 snaplen = get_nonzero_guint32(ws_optarg, "snapshot length");
                 break;
 
-            case 'v':
+            case 'V':
                 verbose = TRUE;
                 break;
 
-            case 'V':
+            case 'v':
                 show_version();
                 goto clean_exit;
                 break;

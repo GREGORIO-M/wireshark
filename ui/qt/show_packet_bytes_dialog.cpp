@@ -14,7 +14,7 @@
 #include "main_application.h"
 #include "ui/qt/widgets/wireshark_file_dialog.h"
 
-#include "epan/charsets.h"
+#include "epan/strutil.h"
 
 #include "wsutil/utf8_entities.h"
 
@@ -62,6 +62,7 @@ ShowPacketBytesDialog::ShowPacketBytesDialog(QWidget &parent, CaptureFile &cf) :
     ui->cbDecodeAs->addItem(tr("Base64"), DecodeAsBASE64);
     ui->cbDecodeAs->addItem(tr("Compressed"), DecodeAsCompressed);
     ui->cbDecodeAs->addItem(tr("Hex Digits"), DecodeAsHexDigits);
+    ui->cbDecodeAs->addItem(tr("Percent-Encoding"), DecodeAsPercentEncoding);
     ui->cbDecodeAs->addItem(tr("Quoted-Printable"), DecodeAsQuotedPrintable);
     ui->cbDecodeAs->addItem(tr("ROT13"), DecodeAsROT13);
     ui->cbDecodeAs->blockSignals(false);
@@ -74,7 +75,7 @@ ShowPacketBytesDialog::ShowPacketBytesDialog(QWidget &parent, CaptureFile &cf) :
     ui->cbShowAs->addItem(tr("Hex Dump"), ShowAsHexDump);
     ui->cbShowAs->addItem(tr("HTML"), ShowAsHTML);
     ui->cbShowAs->addItem(tr("Image"), ShowAsImage);
-    ui->cbShowAs->addItem(tr("Json"), ShowAsJson);
+    ui->cbShowAs->addItem(tr("JSON"), ShowAsJson);
     ui->cbShowAs->addItem(tr("Raw"), ShowAsRAW);
     ui->cbShowAs->addItem(tr("Rust Array"), ShowAsRustArray);
     // UTF-8 is guaranteed to exist as a QTextCodec
@@ -469,19 +470,43 @@ void ShowPacketBytesDialog::sanitizeBuffer(QByteArray &ba, bool keep_CR)
 
 void ShowPacketBytesDialog::symbolizeBuffer(QByteArray &ba)
 {
+    // Replace all octets that don't correspond to an ASCII
+    // character with MIDDLE DOT.  An octet corresponds to an
+    // ASCII character iff the 0x80 bit isn't set in its
+    // value; if char is signed (which it is *not* guaranteed
+    // to be; it is, for example, unsigned on non-Apple ARM
+    // platforms), sign-extension won't affect that bit, so
+    // simply testing the 0x80 bit suffices on all platforms.
     for (int i = 0; i < ba.length(); i++) {
-        if ((ba[i] < '\0' || ba[i] >= ' ') && ba[i] != (char)0x7f && !g_ascii_isprint(ba[i])) {
+        if (ba[i] & 0x80) {
             ba.replace(i, 1, UTF8_MIDDLE_DOT);
             i += sizeof(UTF8_MIDDLE_DOT) - 2;
         }
     }
 
+    // Replace all control characters (NUL through US, i.e. [0, ' '),
+    // and DEL, i.e. 0x7f) with the code point for the symbol for that
+    // character, i.e. the character's abbreviation in small letters.
+    //
+    // The UTF-8 encodings for those code points are all three octets
+    // long, from 0xe2 0x90 0x80 through 0xe2 0x90 0xa1, so we initialize
+    // a QByteArray with the octets for the symbol for NUL and, for
+    // each of the octets from 0x00 through 0x1f, replace all
+    // occurrences of that value with that sequence, and then add 1 to
+    // the last octet of the sequence to get the symbol for the next
+    // value and continue.
+    //
     QByteArray symbol(UTF8_SYMBOL_FOR_NULL);
     for (char i = 0; i < ' '; i++) {
+    	// Replace all occurrences of that value with that symbol.
         ba.replace(i, symbol);
+        // Get the symbol for the next value.
         symbol[2] = symbol[2] + 1;
     }
-    symbol[2] = symbol[2] + 1;      // Skip SP
+    // symbol now has the UTF-8 for the symbol for SP, as that follows
+    // the symbol for US; skip it - the next code point is for the
+    // symbol for DEL.
+    symbol[2] = symbol[2] + 1;
     ba.replace((char)0x7f, symbol); // DEL
 }
 
@@ -564,6 +589,26 @@ void ShowPacketBytesDialog::updateFieldBytes(bool initialization)
         bytes = tvb_get_ptr(finfo_->ds_tvb, start, -1);
         field_bytes_ = QByteArray::fromHex(QByteArray::fromRawData((const char *)bytes, length));
         break;
+
+    case DecodeAsPercentEncoding:
+    {
+        bytes = tvb_get_ptr(finfo_->ds_tvb, start, -1);
+#if GLIB_CHECK_VERSION(2, 66, 0)
+        GBytes *ba = g_uri_unescape_bytes((const char*)bytes, length, NULL, NULL);
+        if (ba != NULL) {
+            gsize size;
+            const char* data = (const char *)g_bytes_unref_to_data(ba, &size);
+            field_bytes_ = QByteArray(data, (int)size);
+        }
+#else
+        GByteArray *ba = g_byte_array_new();
+        if (uri_to_bytes((const char*)bytes, ba, length)) {
+            field_bytes_ = QByteArray((const char *)ba->data, ba->len);
+        }
+        g_byte_array_free(ba, TRUE);
+#endif
+        break;
+    }
 
     case DecodeAsQuotedPrintable:
         bytes = tvb_get_ptr(finfo_->ds_tvb, start, -1);
@@ -854,6 +899,7 @@ void ShowPacketBytesTextEdit::contextMenuEvent(QContextMenuEvent *event)
     QMenu *menu = createStandardContextMenu();
     QAction *action;
 
+    menu->setAttribute(Qt::WA_DeleteOnClose);
     menu->addSeparator();
 
     action = menu->addAction(tr("Show Selected"));
@@ -864,8 +910,7 @@ void ShowPacketBytesTextEdit::contextMenuEvent(QContextMenuEvent *event)
     action->setEnabled(menus_enabled_);
     connect(action, SIGNAL(triggered()), this, SLOT(showAll()));
 
-    menu->exec(event->globalPos());
-    delete menu;
+    menu->popup(event->globalPos());
 }
 
 void ShowPacketBytesTextEdit::showSelected()

@@ -88,6 +88,7 @@ typedef void (*closed_fn)(capture_session *cap_session, gchar *msg);
 struct _capture_session {
     ws_process_id fork_child;             /**< If not WS_INVALID_PID, in parent, process ID of child */
     int       fork_child_status;          /**< Child exit status */
+    int       pipe_input_id;              /**< GLib input pipe source ID */
 #ifdef _WIN32
     int       signal_pipe_write_fd;       /**< the pipe to signal the child */
 #endif
@@ -122,6 +123,8 @@ capture_session_init(capture_session *cap_session, capture_file *cf,
                      new_file_fn new_file, new_packets_fn new_packets,
                      drops_fn drops, error_fn error,
                      cfilter_error_fn cfilter_error, closed_fn closed);
+
+void capture_process_finished(capture_session *cap_session);
 #else
 
 /* dummy is needed because clang throws the error: empty struct has size 0 in C, size 1 in C++ */

@@ -260,24 +260,25 @@ void VoipCallsDialog::contextMenuEvent(QContextMenuEvent *event)
     if (! selected)
         return;
 
-    QMenu popupMenu;
+    QMenu *popupMenu = new QMenu(this);
     QAction *action;
 
-    popupMenu.addMenu(ui->menuSelect);
-    action = popupMenu.addAction(tr("Display time as time of day"), this, SLOT(switchTimeOfDay()));
+    popupMenu->setAttribute(Qt::WA_DeleteOnClose);
+    popupMenu->addMenu(ui->menuSelect);
+    action = popupMenu->addAction(tr("Display time as time of day"), this, SLOT(switchTimeOfDay()));
     action->setCheckable(true);
     action->setChecked(call_infos_model_->timeOfDay());
     action->setEnabled(!file_closed_);
-    popupMenu.addSeparator();
-    action = popupMenu.addAction(tr("Copy as CSV"), this, SLOT(copyAsCSV()));
+    popupMenu->addSeparator();
+    action = popupMenu->addAction(tr("Copy as CSV"), this, SLOT(copyAsCSV()));
     action->setToolTip(tr("Copy stream list as CSV."));
-    action = popupMenu.addAction(tr("Copy as YAML"), this, SLOT(copyAsYAML()));
+    action = popupMenu->addAction(tr("Copy as YAML"), this, SLOT(copyAsYAML()));
     action->setToolTip(tr("Copy stream list as YAML."));
-    popupMenu.addSeparator();
-    popupMenu.addAction(ui->actionSelectRtpStreams);
-    popupMenu.addAction(ui->actionDeselectRtpStreams);
+    popupMenu->addSeparator();
+    popupMenu->addAction(ui->actionSelectRtpStreams);
+    popupMenu->addAction(ui->actionDeselectRtpStreams);
 
-    popupMenu.exec(event->globalPos());
+    popupMenu->popup(event->globalPos());
 }
 
 void VoipCallsDialog::changeEvent(QEvent *event)
@@ -332,7 +333,7 @@ void VoipCallsDialog::tapReset(void *tapinfo_ptr)
     voip_calls_dialog->sequence_info_ = new SequenceInfo(voip_calls_dialog->tapinfo_.graph_analysis);
 }
 
-tap_packet_status VoipCallsDialog::tapPacket(void *, packet_info *, epan_dissect_t *, const void *)
+tap_packet_status VoipCallsDialog::tapPacket(void *, packet_info *, epan_dissect_t *, const void *, tap_flags_t)
 {
 #ifdef QT_MULTIMEDIA_LIB
 //    voip_calls_tapinfo_t *tapinfo = (voip_calls_tapinfo_t *) tapinfo_ptr;

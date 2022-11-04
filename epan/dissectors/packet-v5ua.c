@@ -33,6 +33,7 @@
 #include <epan/sctpppids.h>      /* include V5UA payload protocol ID */
 
 #include <wsutil/str_util.h>
+#include <wsutil/ws_roundup.h>
 
 void proto_register_v5ua(void);
 void proto_reg_handoff_v5ua(void);
@@ -45,9 +46,6 @@ static int proto_v5ua                    = -1;
 
 static dissector_handle_t q931_handle;
 static dissector_handle_t v52_handle;
-
- /* round up parameter length to multiple of four */
-#define ADD_PADDING(x) ((((x) + 3) >> 2) << 2)
 
 /* common msg-header */
 static int hf_version               = -1;
@@ -182,8 +180,8 @@ dissect_text_interface_identifier_parameter(packet_info *pinfo, tvbuff_t *parame
 
    if_id_length = tvb_get_ntohs(parameter_tvb, TEXT_IF_ID_LENGTH_OFFSET) - TEXT_IF_ID_HEADER_LENGTH;
 
-   proto_tree_add_item_ret_string(parameter_tree, hf_text_if_id, parameter_tvb, TEXT_IF_ID_VALUE_OFFSET, if_id_length, ENC_ASCII|ENC_NA, pinfo->pool, &str);
-   proto_item_append_text(parameter_item, " (0x%.*s)", if_id_length, str);
+   proto_tree_add_item_ret_string(parameter_tree, hf_text_if_id, parameter_tvb, TEXT_IF_ID_VALUE_OFFSET, if_id_length, ENC_ASCII, pinfo->pool, &str);
+   proto_item_append_text(parameter_item, " (0x%s)", str);
 }
 /*----------------------Text Interface Identifier (RFC)------------------------*/
 
@@ -459,8 +457,8 @@ dissect_asp_msg_parameter(packet_info *pinfo, tvbuff_t *parameter_tvb, proto_tre
    const guint8* str;
    guint16 adaptation_layer_id_length = tvb_get_ntohs(parameter_tvb, PARAMETER_LENGTH_OFFSET);
 
-   proto_tree_add_item_ret_string(parameter_tree, hf_adaptation_layer_id, parameter_tvb, PARAMETER_VALUE_OFFSET, adaptation_layer_id_length, ENC_ASCII|ENC_NA, pinfo->pool, &str);
-   proto_item_append_text(parameter_item, " (%.*s)", adaptation_layer_id_length, str);
+   proto_tree_add_item_ret_string(parameter_tree, hf_adaptation_layer_id, parameter_tvb, PARAMETER_VALUE_OFFSET, adaptation_layer_id_length, ENC_ASCII, pinfo->pool, &str);
+   proto_item_append_text(parameter_item, " (%s)", str);
 }
 
 static void
@@ -468,8 +466,8 @@ dissect_scn_protocol_id_parameter(packet_info *pinfo, tvbuff_t *parameter_tvb, p
 {
    const guint8* str;
    guint16 id_length = tvb_get_ntohs(parameter_tvb, PARAMETER_LENGTH_OFFSET);
-   proto_tree_add_item_ret_string(parameter_tree, hf_scn_protocol_id, parameter_tvb, PARAMETER_VALUE_OFFSET, id_length, ENC_ASCII|ENC_NA, pinfo->pool, &str);
-   proto_item_append_text(parameter_item, " (%.*s)", id_length, str);
+   proto_tree_add_item_ret_string(parameter_tree, hf_scn_protocol_id, parameter_tvb, PARAMETER_VALUE_OFFSET, id_length, ENC_ASCII, pinfo->pool, &str);
+   proto_item_append_text(parameter_item, " (%s)", str);
 }
 
 /*----------------------ASP (Draft)--------------------------------------------*/
@@ -760,8 +758,8 @@ dissect_info_string_parameter(packet_info *pinfo, tvbuff_t *parameter_tvb, proto
    if(iua_version == DRAFT) info_string_length += 4;
    if(info_string_length > 4){
       info_string_length -= PARAMETER_HEADER_LENGTH;
-      proto_tree_add_item_ret_string(parameter_tree, hf_info_string, parameter_tvb, INFO_STRING_OFFSET, info_string_length, ENC_ASCII|ENC_NA, pinfo->pool, &str);
-      proto_item_append_text(parameter_item, " (%.*s)", info_string_length, str);
+      proto_tree_add_item_ret_string(parameter_tree, hf_info_string, parameter_tvb, INFO_STRING_OFFSET, info_string_length, ENC_ASCII, pinfo->pool, &str);
+      proto_item_append_text(parameter_item, " (%s)", str);
    }
 }
 
@@ -993,7 +991,7 @@ dissect_parameters(tvbuff_t *parameters_tvb, packet_info *pinfo, proto_tree *tre
          if((msg_class==0 || msg_class==1 || msg_class==9)&&msg_type<=10)
             length = msg_length;
       }
-      total_length = ADD_PADDING(length);
+      total_length = WS_ROUNDUP_4(length);
       if (remaining_length >= length)
          total_length = MIN(total_length, remaining_length);
       /* create a tvb for the parameter including the padding bytes */

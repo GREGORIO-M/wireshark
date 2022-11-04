@@ -290,6 +290,11 @@ extern "C" {
 #define WTAP_ENCAP_ETW                          212
 #define WTAP_ENCAP_ERI_ENB_LOG                  213
 #define WTAP_ENCAP_ZBNCP			214
+#define WTAP_ENCAP_USB_2_0_LOW_SPEED            215
+#define WTAP_ENCAP_USB_2_0_FULL_SPEED           216
+#define WTAP_ENCAP_USB_2_0_HIGH_SPEED           217
+#define WTAP_ENCAP_AUTOSAR_DLT                  218
+#define WTAP_ENCAP_AUERSWALD_LOG                219
 
 /* After adding new item here, please also add new item to encap_table_base array */
 
@@ -333,7 +338,7 @@ extern "C" {
  */
 #define WTAP_MAX_PACKET_SIZE_STANDARD    262144U
 #define WTAP_MAX_PACKET_SIZE_USBPCAP     (128U*1024U*1024U)
-#define WTAP_MAX_PACKET_SIZE_EBHSCR      (8U*1024U*1024U)
+#define WTAP_MAX_PACKET_SIZE_EBHSCR      (32U*1024U*1024U)
 #define WTAP_MAX_PACKET_SIZE_DBUS        (128U*1024U*1024U)
 
 /*
@@ -1335,6 +1340,30 @@ typedef struct {
 #define BBLOG_TYPE_EVENT_BLOCK   1
 #define BBLOG_TYPE_SKIPPED_BLOCK 2
 
+/*
+ * The largest nstime.secs value that can be put into an unsigned
+ * 32-bit quantity.
+ *
+ * We assume that time_t is signed; it is signed on Windows/MSVC and
+ * on many UN*Xes.
+ *
+ * So, if time_t is 32-bit, we define this as G_MAXINT32, as that's
+ * the largest value a time_t can have, and it fits in an unsigned
+ * 32-bit quantity.  If it's 64-bit or larger, we define this as
+ * G_MAXUINT32, as, even if it's signed, it can be as large as
+ * G_MAXUINT32, and that's the largest value that can fit in
+ * a 32-bit unsigned quantity.
+ *
+ * Comparing against this, rather than against G_MAXINT2, when checking
+ * whether a time stamp will fit in a 32-bit unsigned integer seconds
+ * field in a capture file being written avoids signed vs. unsigned
+ * warnings if time_t is a signed 32-bit type.
+ *
+ * XXX - what if time_t is unsigned?  Are there any platforms where
+ * it is?
+ */
+#define WTAP_NSTIME_32BIT_SECS_MAX ((time_t)(sizeof(time_t) > sizeof(gint32) ? G_MAXUINT32 : G_MAXINT32))
+
 typedef struct {
     guint     rec_type;          /* what type of record is this? */
     guint32   presence_flags;    /* what stuff do we have? */
@@ -1721,11 +1750,11 @@ void wtap_cleareof(wtap *wth);
  * Set callback functions to add new hostnames. Currently pcapng-only.
  * MUST match add_ipv4_name and add_ipv6_name in addr_resolv.c.
  */
-typedef void (*wtap_new_ipv4_callback_t) (const guint addr, const gchar *name);
+typedef void (*wtap_new_ipv4_callback_t) (const guint addr, const gchar *name, const gboolean static_entry);
 WS_DLL_PUBLIC
 void wtap_set_cb_new_ipv4(wtap *wth, wtap_new_ipv4_callback_t add_new_ipv4);
 
-typedef void (*wtap_new_ipv6_callback_t) (const void *addrp, const gchar *name);
+typedef void (*wtap_new_ipv6_callback_t) (const void *addrp, const gchar *name, const gboolean static_entry);
 WS_DLL_PUBLIC
 void wtap_set_cb_new_ipv6(wtap *wth, wtap_new_ipv6_callback_t add_new_ipv6);
 
@@ -2299,8 +2328,8 @@ void wtap_cleanup(void);
     /**< The file being opened is not a capture file in a known format */
 
 #define WTAP_ERR_UNSUPPORTED                   -4
-    /**< Supported file type, but there's something in the file we
-       can't support */
+    /**< Supported file type, but there's something in the file we're
+       reading that we can't support */
 
 #define WTAP_ERR_CANT_WRITE_TO_PIPE            -5
     /**< Wiretap can't save to a pipe in the specified format */
@@ -2370,6 +2399,10 @@ void wtap_cleanup(void);
 
 #define WTAP_ERR_DECOMPRESSION_NOT_SUPPORTED  -26
     /**< We don't support decompressing that type of compressed file */
+
+#define WTAP_ERR_TIME_STAMP_NOT_SUPPORTED     -27
+    /**< We don't support writing that record's time stamp to that
+         file type  */
 
 #ifdef __cplusplus
 }

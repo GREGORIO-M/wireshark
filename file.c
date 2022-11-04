@@ -55,6 +55,7 @@
 #include "ui/progress_dlg.h"
 #include "ui/urls.h"
 #include "ui/ws_ui_util.h"
+#include "ui/packet_list_utils.h"
 
 /* Needed for addrinfo */
 #include <sys/types.h>
@@ -196,25 +197,6 @@ cf_callback_remove(cf_callback_t func, gpointer user_data)
     }
 
     ws_assert_not_reached();
-}
-
-void
-cf_timestamp_auto_precision(capture_file *cf)
-{
-    int i;
-
-    /* don't try to get the file's precision if none is opened */
-    if (cf->state == FILE_CLOSED) {
-        return;
-    }
-
-    /* Set the column widths of those columns that show the time in
-       "command-line-specified" format. */
-    for (i = 0; i < cf->cinfo.num_cols; i++) {
-        if (col_has_time_fmt(&cf->cinfo, i)) {
-            packet_list_resize_column(i);
-        }
-    }
 }
 
 gulong
@@ -422,7 +404,6 @@ cf_close(capture_file *cf)
     /* No frames, no frame selected, no field in that frame selected. */
     cf->count = 0;
     cf->current_frame = NULL;
-    cf->current_row = 0;
     cf->finfo_selected = NULL;
 
     /* No frame link-layer types, either. */
@@ -709,7 +690,6 @@ cf_read(capture_file *cf, gboolean reloading)
     cf->lnk_t = wtap_file_encap(cf->provider.wth);
 
     cf->current_frame = frame_data_sequence_find(cf->provider.frames, cf->first_displayed);
-    cf->current_row = 0;
 
     packet_list_thaw();
     if (reloading)
@@ -720,7 +700,7 @@ cf_read(capture_file *cf, gboolean reloading)
     /* If we have any displayed packets to select, select the first of those
        packets by making the first row the selected row. */
     if (cf->first_displayed != 0) {
-        packet_list_select_first_row();
+        packet_list_select_row_from_data(NULL);
     }
 
     /* It is safe again to execute redissections. */
@@ -879,12 +859,7 @@ cf_continue_tail(capture_file *cf, volatile int to_read, wtap_rec *rec,
      * isn't automatically selected.
      */
     if (!cf->current_frame && !packet_list_multi_select_active())
-        packet_list_select_first_row();
-
-    /* moving to the end of the packet list - if the user requested so and
-       we have some new packets. */
-    if (newly_displayed_packets && cf->count != 0)
-        packet_list_moveto_end();
+        packet_list_select_row_from_data(NULL);
 
     if (cf->state == FILE_READ_ABORTED) {
         /* Well, the user decided to exit Wireshark.  Return CF_READ_ABORTED
@@ -2005,9 +1980,8 @@ rescan_packets(capture_file *cf, const char *action, const char *action_item, gb
            found the nearest displayed frame to that frame.  Select it, make
            it the focus row, and make it visible. */
         /* Set to invalid to force update of packet list and packet details */
-        cf->current_row = -1;
         if (selected_frame_num == 0) {
-            packet_list_select_first_row();
+            packet_list_select_row_from_data(NULL);
         }else{
             if (!packet_list_select_row_from_data(selected_frame)) {
                 /* We didn't find a row corresponding to this frame.
@@ -2371,6 +2345,7 @@ print_packet(capture_file *cf, frame_data *fdata, wtap_rec *rec, Buffer *buf,
     char            bookmark_name[9+10+1];  /* "__frameNNNNNNNNNN__\0" */
     char            bookmark_title[6+10+1]; /* "Frame NNNNNNNNNN__\0"  */
     col_item_t*     col_item;
+    const gchar*    col_text;
 
     /* Fill in the column information if we're printing the summary
        information. */
@@ -2420,8 +2395,9 @@ print_packet(capture_file *cf, frame_data *fdata, wtap_rec *rec, Buffer *buf,
         line_len = 0;
         for (i = 0; i < args->num_visible_cols; i++) {
             col_item = &cf->cinfo.columns[args->visible_cols[i]];
+            col_text = get_column_text(&cf->cinfo, args->visible_cols[i]);
             /* Find the length of the string for this column. */
-            column_len = (int) strlen(col_item->col_data);
+            column_len = (int) strlen(col_text);
             if (args->col_widths[i] > column_len)
                 column_len = args->col_widths[i];
 
@@ -2437,9 +2413,9 @@ print_packet(capture_file *cf, frame_data *fdata, wtap_rec *rec, Buffer *buf,
 
             /* Right-justify the packet number column. */
             if (col_item->col_fmt == COL_NUMBER)
-                snprintf(cp, column_len+1, "%*s", args->col_widths[i], col_item->col_data);
+                snprintf(cp, column_len+1, "%*s", args->col_widths[i], col_text);
             else
-                snprintf(cp, column_len+1, "%-*s", args->col_widths[i], col_item->col_data);
+                snprintf(cp, column_len+1, "%-*s", args->col_widths[i], col_text);
             cp += column_len;
             if (i != args->num_visible_cols - 1)
                 *cp++ = ' ';
@@ -3170,7 +3146,7 @@ match_subtree_text(proto_node *node, gpointer data)
     }
 
     if (cf->regex) {
-        if (g_regex_match(cf->regex, label_ptr, (GRegexMatchFlags) 0, NULL)) {
+        if (ws_regex_matches(cf->regex, label_ptr)) {
             mdata->frame_matched = TRUE;
             mdata->finfo = fi;
             return;
@@ -3244,10 +3220,10 @@ match_summary_line(capture_file *cf, frame_data *fdata,
     for (colx = 0; colx < cf->cinfo.num_cols; colx++) {
         if (cf->cinfo.columns[colx].fmt_matx[COL_INFO]) {
             /* Found it.  See if we match. */
-            info_column = edt.pi.cinfo->columns[colx].col_data;
+            info_column = get_column_text(edt.pi.cinfo, colx);
             info_column_len = strlen(info_column);
             if (cf->regex) {
-                if (g_regex_match(cf->regex, info_column, (GRegexMatchFlags) 0, NULL)) {
+                if (ws_regex_matches(cf->regex, info_column)) {
                     result = MR_MATCHED;
                     break;
                 }
@@ -3771,7 +3747,7 @@ match_regex(capture_file *cf, frame_data *fdata,
         wtap_rec *rec, Buffer *buf, void *criterion _U_)
 {
     match_result  result = MR_NOTMATCHED;
-    GMatchInfo   *match_info = NULL;
+    size_t result_pos[2] = {0, 0};
 
     /* Load the frame's data. */
     if (!cf_read_record(cf, fdata, rec, buf)) {
@@ -3779,13 +3755,13 @@ match_regex(capture_file *cf, frame_data *fdata,
         return MR_ERROR;
     }
 
-    if (g_regex_match_full(cf->regex, (const gchar *)ws_buffer_start_ptr(buf), fdata->cap_len,
-                0, (GRegexMatchFlags) 0, &match_info, NULL))
-    {
-        gint start_pos = 0, end_pos = 0;
-        g_match_info_fetch_pos (match_info, 0, &start_pos, &end_pos);
-        cf->search_pos = end_pos - 1;
-        cf->search_len = end_pos - start_pos;
+    if (ws_regex_matches_pos(cf->regex,
+                                (const gchar *)ws_buffer_start_ptr(buf),
+                                fdata->cap_len,
+                                result_pos)) {
+        //TODO: Fix cast.
+        cf->search_pos = (guint32)(result_pos[1] - 1); /* last byte = end position - 1 */
+        cf->search_len = (guint32)(result_pos[1] - result_pos[0]);
         result = MR_MATCHED;
     }
     return result;
@@ -4109,14 +4085,11 @@ cf_goto_framenum(capture_file *cf)
 
 /* Select the packet on a given row. */
 void
-cf_select_packet(capture_file *cf, int row)
+cf_select_packet(capture_file *cf, frame_data *fdata)
 {
     epan_dissect_t *old_edt;
-    frame_data     *fdata;
 
-    /* Get the frame data struct pointer for this frame */
-    fdata = packet_list_get_row_data(row);
-
+    /* check the frame data struct pointer for this frame */
     if (fdata == NULL) {
         return;
     }
@@ -4128,7 +4101,6 @@ cf_select_packet(capture_file *cf, int row)
 
     /* Record that this frame is the current frame. */
     cf->current_frame = fdata;
-    cf->current_row = row;
 
     /*
      * The change to defer freeing the current epan_dissect_t was in
@@ -4177,7 +4149,6 @@ cf_unselect_packet(capture_file *cf)
 
     /* No packet is selected. */
     cf->current_frame = NULL;
-    cf->current_row = 0;
 
     /* Destroy the epan_dissect_t for the unselected packet. */
     if (old_edt != NULL)
@@ -4622,7 +4593,9 @@ rescan_file(capture_file *cf, const char *fname, gboolean is_tempfile)
                     &data_offset))) {
         framenum++;
         fdata = frame_data_sequence_find(cf->provider.frames, framenum);
-        fdata->file_off = data_offset;
+        if (G_LIKELY(fdata != NULL)) {
+            fdata->file_off = data_offset;
+        }
         if (size >= 0) {
             count++;
             cf->f_datalen = wtap_read_so_far(cf->provider.wth);
@@ -4932,6 +4905,7 @@ cf_save_records(capture_file *cf, const char *fname, guint save_format,
 #endif
             goto fail;
         }
+        g_free(fname_new);
     }
 
     /* If this was a temporary file, and we didn't do the save by doing
@@ -4961,15 +4935,13 @@ cf_save_records(capture_file *cf, const char *fname, guint save_format,
 
             case SAVE_WITH_COPY:
                 /* We just copied the file, so all the information other than
-                   the wtap structure, the filename, and the "is temporary"
+                   the file descriptors, the filename, and the "is temporary"
                    status applies to the new file; just update that. */
-                wtap_close(cf->provider.wth);
-                /* Although we're just "copying" and then opening the copy, it will
-                   try all open_routine readers to open the copy, so we need to
-                   reset the cfile's open_type. */
-                cf->open_type = WTAP_TYPE_AUTO;
-                cf->provider.wth = wtap_open_offline(fname, WTAP_TYPE_AUTO, &err, &err_info, TRUE);
-                if (cf->provider.wth == NULL) {
+                wtap_fdclose(cf->provider.wth);
+                /* Attempt to reopen the random file descriptor using the
+                   new file's filename.  (At this point, the sequential
+                   file descriptor is closed.) */
+                if (!wtap_fdreopen(cf->provider.wth, fname, &err)) {
                     cfile_open_failure_alert_box(fname, err, err_info);
                     cf_close(cf);
                 } else {

@@ -354,9 +354,13 @@ static  wmem_list_t *async_dns_queue_head = NULL;
 gboolean use_custom_dns_server_list = FALSE;
 struct dns_server_data {
     char *ipaddr;
+    guint32 udp_port;
+    guint32 tcp_port;
 };
 
 UAT_CSTRING_CB_DEF(dnsserverlist_uats, ipaddr, struct dns_server_data)
+UAT_DEC_CB_DEF(dnsserverlist_uats, tcp_port, struct dns_server_data)
+UAT_DEC_CB_DEF(dnsserverlist_uats, udp_port, struct dns_server_data)
 
 static uat_t *dnsserver_uat = NULL;
 static struct dns_server_data  *dnsserverlist_uats = NULL;
@@ -377,6 +381,8 @@ dns_server_copy_cb(void *dst_, const void *src_, size_t len _U_)
     struct dns_server_data       *dst = (struct dns_server_data *)dst_;
 
     dst->ipaddr = g_strdup(src->ipaddr);
+    dst->udp_port = src->udp_port;
+    dst->tcp_port = src->tcp_port;
 
     return dst;
 }
@@ -394,7 +400,26 @@ dnsserver_uat_fld_ip_chk_cb(void* r _U_, const char* ipaddr, guint len _U_, cons
     return FALSE;
 }
 
+static gboolean
+dnsserver_uat_fld_port_chk_cb(void* r _U_, const char* p, guint len _U_, const void* u1 _U_, const void* u2 _U_, char** err)
+{
+    if (!p || strlen(p) == 0u) {
+        // This should be removed in favor of Decode As. Make it optional.
+        *err = NULL;
+        return TRUE;
+    }
 
+    if (strcmp(p, "53") != 0){
+        guint16 port;
+        if (!ws_strtou16(p, NULL, &port)) {
+            *err = g_strdup("Invalid port given.");
+            return FALSE;
+        }
+    }
+
+    *err = NULL;
+    return TRUE;
+}
 
 static void
 c_ares_ghba_sync_cb(void *arg, int status, int timeouts _U_, struct hostent *he) {
@@ -405,10 +430,10 @@ c_ares_ghba_sync_cb(void *arg, int status, int timeouts _U_, struct hostent *he)
         for (p = he->h_addr_list; *p != NULL; p++) {
             switch(sdd->family) {
                 case AF_INET:
-                    add_ipv4_name(sdd->addr.ip4, he->h_name);
+                    add_ipv4_name(sdd->addr.ip4, he->h_name, FALSE);
                     break;
                 case AF_INET6:
-                    add_ipv6_name(&sdd->addr.ip6, he->h_name);
+                    add_ipv6_name(&sdd->addr.ip6, he->h_name, FALSE);
                     break;
                 default:
                     /* Throw an exception? */
@@ -545,14 +570,14 @@ c_ares_set_dns_servers(void)
 
     if (ndnsservers == 0) {
         //clear the list of servers.  This may effectively disable name resolution
-        ares_set_servers(ghba_chan, NULL);
-        ares_set_servers(ghbn_chan, NULL);
+        ares_set_servers_ports(ghba_chan, NULL);
+        ares_set_servers_ports(ghbn_chan, NULL);
     } else {
-        struct ares_addr_node* servers = wmem_alloc_array(NULL, struct ares_addr_node, ndnsservers);
+        struct ares_addr_port_node* servers = wmem_alloc_array(NULL, struct ares_addr_port_node, ndnsservers);
         ws_in4_addr ipv4addr;
         ws_in6_addr ipv6addr;
         gboolean invalid_IP_found = FALSE;
-        struct ares_addr_node* server;
+        struct ares_addr_port_node* server;
         guint i;
         for (i = 0, server = servers; i < ndnsservers-1; i++, server++) {
             if (ws_inet_pton6(dnsserverlist_uats[i].ipaddr, &ipv6addr)) {
@@ -568,6 +593,9 @@ c_ares_set_dns_servers(void)
                 memset(&server->addr.addr4, 0, 4);
                 break;
             }
+
+            server->udp_port = (int)dnsserverlist_uats[i].udp_port;
+            server->tcp_port = (int)dnsserverlist_uats[i].tcp_port;
 
             server->next = (server+1);
         }
@@ -585,10 +613,13 @@ c_ares_set_dns_servers(void)
                 memset(&server->addr.addr4, 0, 4);
             }
         }
+        server->udp_port = (int)dnsserverlist_uats[i].udp_port;
+        server->tcp_port = (int)dnsserverlist_uats[i].tcp_port;
+
         server->next = NULL;
 
-        ares_set_servers(ghba_chan, servers);
-        ares_set_servers(ghbn_chan, servers);
+        ares_set_servers_ports(ghba_chan, servers);
+        ares_set_servers_ports(ghbn_chan, servers);
         wmem_free(NULL, servers);
     }
 }
@@ -1038,10 +1069,10 @@ c_ares_ghba_cb(void *arg, int status, int timeouts _U_, struct hostent *he) {
         for (p = he->h_addr_list; *p != NULL; p++) {
             switch(caqm->family) {
                 case AF_INET:
-                    add_ipv4_name(caqm->addr.ip4, he->h_name);
+                    add_ipv4_name(caqm->addr.ip4, he->h_name, FALSE);
                     break;
                 case AF_INET6:
-                    add_ipv6_name(&caqm->addr.ip6, he->h_name);
+                    add_ipv6_name(&caqm->addr.ip6, he->h_name, FALSE);
                     break;
                 default:
                     /* Throw an exception? */
@@ -2084,7 +2115,6 @@ initialize_ipxnets(void)
 static void
 ipx_name_lookup_cleanup(void)
 {
-    ipxnet_hash_table = NULL;
     g_free(g_pipxnets_path);
     g_pipxnets_path = NULL;
 }
@@ -2228,6 +2258,7 @@ initialize_vlans(void)
 static void
 vlan_name_lookup_cleanup(void)
 {
+    end_vlanent();
     vlan_hash_table = NULL;
     g_free(g_pvlan_path);
     g_pvlan_path = NULL;
@@ -2306,9 +2337,9 @@ read_hosts_file (const char *hostspath, gboolean store_entries)
         entry_found = TRUE;
         if (store_entries) {
             if (is_ipv6) {
-                add_ipv6_name(&host_addr.ip6_addr, cp);
+                add_ipv6_name(&host_addr.ip6_addr, cp, TRUE);
             } else {
-                add_ipv4_name(host_addr.ip4_addr, cp);
+                add_ipv4_name(host_addr.ip4_addr, cp, TRUE);
             }
         }
     }
@@ -2824,12 +2855,12 @@ addr_resolve_pref_init(module_t *nameres)
             &gbl_resolv_flags.network_name);
 
     prefs_register_bool_preference(nameres, "dns_pkt_addr_resolution",
-            "Use captured DNS packet data for address resolution",
-            "Whether address/name pairs found in captured DNS packets should be used by Wireshark for name resolution.",
+            "Use captured DNS packet data for name resolution",
+            "Use address/name pairs found in captured DNS packets for name resolution.",
             &gbl_resolv_flags.dns_pkt_addr_resolution);
 
     prefs_register_bool_preference(nameres, "use_external_name_resolver",
-            "Use an external network name resolver",
+            "Use your system's DNS settings for name resolution",
             "Use your system's configured name resolver"
             " (usually DNS) to resolve network names."
             " Only applies when network name resolution"
@@ -2837,12 +2868,14 @@ addr_resolve_pref_init(module_t *nameres)
             &gbl_resolv_flags.use_external_net_name_resolver);
 
     prefs_register_bool_preference(nameres, "use_custom_dns_servers",
-        "Use custom list of DNS servers for name resolution",
-        "Uses DNS Servers list to resolve network names if TRUE.  If FALSE, default information is used",
-        &use_custom_dns_server_list);
+            "Use a custom list of DNS servers for name resolution",
+            "Use a DNS Servers list to resolve network names if TRUE.  If FALSE, default information is used",
+            &use_custom_dns_server_list);
 
     static uat_field_t dns_server_uats_flds[] = {
         UAT_FLD_CSTRING_OTHER(dnsserverlist_uats, ipaddr, "IP address", dnsserver_uat_fld_ip_chk_cb, "IPv4 or IPv6 address"),
+        UAT_FLD_CSTRING_OTHER(dnsserverlist_uats, tcp_port, "TCP Port", dnsserver_uat_fld_port_chk_cb, "Port Number (TCP)"),
+        UAT_FLD_CSTRING_OTHER(dnsserverlist_uats, udp_port, "UDP Port", dnsserver_uat_fld_port_chk_cb, "Port Number (UDP)"),
         UAT_END_FIELDS
     };
 
@@ -2860,6 +2893,8 @@ addr_resolve_pref_init(module_t *nameres)
         c_ares_set_dns_servers,
         NULL,
         dns_server_uats_flds);
+    static const char *dnsserver_uat_defaults[] = { NULL, "53", "53" };
+    uat_set_default_values(dnsserver_uat, dnsserver_uat_defaults);
     prefs_register_uat_preference(nameres, "dns_servers",
         "DNS Servers",
         "A table of IPv4 and IPv6 addresses of DNS servers to be used to resolve IP names and addresses",
@@ -3015,7 +3050,7 @@ get_hostname6(const ws_in6_addr *addr)
 
 /* -------------------------- */
 void
-add_ipv4_name(const guint addr, const gchar *name)
+add_ipv4_name(const guint addr, const gchar *name, gboolean static_entry)
 {
     hashipv4_t *tp;
 
@@ -3032,16 +3067,18 @@ add_ipv4_name(const guint addr, const gchar *name)
         wmem_map_insert(ipv4_hash_table, GUINT_TO_POINTER(addr), tp);
     }
 
-    if (g_ascii_strcasecmp(tp->name, name)) {
+    if (g_ascii_strcasecmp(tp->name, name) && (static_entry || !(tp->flags & STATIC_HOSTNAME))) {
         (void) g_strlcpy(tp->name, name, MAXNAMELEN);
         new_resolved_objects = TRUE;
+        if (static_entry)
+            tp->flags |= STATIC_HOSTNAME;
     }
     tp->flags |= TRIED_RESOLVE_ADDRESS|NAME_RESOLVED;
 } /* add_ipv4_name */
 
 /* -------------------------- */
 void
-add_ipv6_name(const ws_in6_addr *addrp, const gchar *name)
+add_ipv6_name(const ws_in6_addr *addrp, const gchar *name, const gboolean static_entry)
 {
     hashipv6_t *tp;
 
@@ -3062,9 +3099,11 @@ add_ipv6_name(const ws_in6_addr *addrp, const gchar *name)
         wmem_map_insert(ipv6_hash_table, addr_key, tp);
     }
 
-    if (g_ascii_strcasecmp(tp->name, name)) {
+    if (g_ascii_strcasecmp(tp->name, name) && (static_entry || !(tp->flags & STATIC_HOSTNAME))) {
         (void) g_strlcpy(tp->name, name, MAXNAMELEN);
         new_resolved_objects = TRUE;
+        if (static_entry)
+            tp->flags |= STATIC_HOSTNAME;
     }
     tp->flags |= TRIED_RESOLVE_ADDRESS|NAME_RESOLVED;
 } /* add_ipv6_name */
@@ -3073,14 +3112,14 @@ static void
 add_manually_resolved_ipv4(gpointer key, gpointer value, gpointer user_data _U_)
 {
     resolved_name_t *resolved_ipv4_entry = (resolved_name_t*)value;
-    add_ipv4_name(GPOINTER_TO_UINT(key), resolved_ipv4_entry->name);
+    add_ipv4_name(GPOINTER_TO_UINT(key), resolved_ipv4_entry->name, TRUE);
 }
 
 static void
 add_manually_resolved_ipv6(gpointer key, gpointer value, gpointer user_data _U_)
 {
     resolved_name_t *resolved_ipv6_entry = (resolved_name_t*)value;
-    add_ipv6_name((ws_in6_addr*)key, resolved_ipv6_entry->name);
+    add_ipv6_name((ws_in6_addr*)key, resolved_ipv6_entry->name, TRUE);
 }
 
 static void

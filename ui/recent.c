@@ -25,6 +25,7 @@
 #include "ui/last_open_dir.h"
 #include "ui/recent.h"
 #include "ui/recent_utils.h"
+#include "ui/packet_list_utils.h"
 #include "ui/simple_dialog.h"
 
 #include <wsutil/file_util.h>
@@ -60,7 +61,9 @@
 #define RECENT_LAST_USED_PROFILE                "gui.last_used_profile"
 #define RECENT_GUI_FILEOPEN_REMEMBERED_DIR      "gui.fileopen_remembered_dir"
 #define RECENT_GUI_CONVERSATION_TABS            "gui.conversation_tabs"
+#define RECENT_GUI_CONVERSATION_TABS_COLUMNS    "gui.conversation_tabs_columns"
 #define RECENT_GUI_ENDPOINT_TABS                "gui.endpoint_tabs"
+#define RECENT_GUI_ENDPOINT_TABS_COLUMNS        "gui.endpoint_tabs_columns"
 #define RECENT_GUI_RLC_PDUS_FROM_MAC_FRAMES     "gui.rlc_pdus_from_mac_frames"
 #define RECENT_GUI_CUSTOM_COLORS                "gui.custom_colors"
 #define RECENT_GUI_TOOLBAR_SHOW                 "gui.additional_toolbar_show"
@@ -918,10 +921,22 @@ write_profile_recent(void)
     fprintf(rf, RECENT_GUI_CONVERSATION_TABS ": %s\n", string_list);
     g_free(string_list);
 
+    fprintf(rf, "\n# Conversation dialog tabs columns.\n");
+    fprintf(rf, "# List of conversation columns numbers.\n");
+    string_list = join_string_list(recent.conversation_tabs_columns);
+    fprintf(rf, RECENT_GUI_CONVERSATION_TABS_COLUMNS ": %s\n", string_list);
+    g_free(string_list);
+
     fprintf(rf, "\n# Open endpoint dialog tabs.\n");
     fprintf(rf, "# List of endpoint names, e.g. \"TCP\", \"IPv6\".\n");
     string_list = join_string_list(recent.endpoint_tabs);
     fprintf(rf, RECENT_GUI_ENDPOINT_TABS ": %s\n", string_list);
+    g_free(string_list);
+
+    fprintf(rf, "\n# Endpoint dialog tabs columns.\n");
+    fprintf(rf, "# List of endpoint columns numbers.\n");
+    string_list = join_string_list(recent.endpoint_tabs_columns);
+    fprintf(rf, RECENT_GUI_ENDPOINT_TABS_COLUMNS ": %s\n", string_list);
     g_free(string_list);
 
     write_recent_boolean(rf, "For RLC stats, whether to use RLC PDUs found inside MAC frames",
@@ -1079,8 +1094,8 @@ read_set_recent_pair_static(gchar *key, const gchar *value,
     } else if (strcmp(key, RECENT_KEY_PACKET_LIST_COLORIZE) == 0) {
         parse_recent_boolean(value, &recent.packet_list_colorize);
     } else if (strcmp(key, RECENT_GUI_TIME_FORMAT) == 0) {
-        recent.gui_time_format =
-            (ts_type)str_to_val(value, ts_type_values, TS_RELATIVE);
+        recent.gui_time_format = (ts_type)str_to_val(value, ts_type_values,
+            is_packet_configuration_namespace() ? TS_RELATIVE : TS_ABSOLUTE);
     } else if (strcmp(key, RECENT_GUI_TIME_PRECISION) == 0) {
         recent.gui_time_precision =
             (ts_precision)str_to_val(value, ts_precision_values, TS_PREC_AUTO);
@@ -1122,8 +1137,12 @@ read_set_recent_pair_static(gchar *key, const gchar *value,
         recent.has_gui_geometry_main_lower_pane = TRUE;
     } else if (strcmp(key, RECENT_GUI_CONVERSATION_TABS) == 0) {
         recent.conversation_tabs = prefs_get_string_list(value);
+    } else if (strcmp(key, RECENT_GUI_CONVERSATION_TABS_COLUMNS) == 0) {
+        recent.conversation_tabs_columns = prefs_get_string_list(value);
     } else if (strcmp(key, RECENT_GUI_ENDPOINT_TABS) == 0) {
         recent.endpoint_tabs = prefs_get_string_list(value);
+    } else if (strcmp(key, RECENT_GUI_ENDPOINT_TABS_COLUMNS) == 0) {
+        recent.endpoint_tabs_columns = prefs_get_string_list(value);
     } else if (strcmp(key, RECENT_GUI_RLC_PDUS_FROM_MAC_FRAMES) == 0) {
         parse_recent_boolean(value, &recent.gui_rlc_use_pdus_from_mac);
     } else if (strcmp(key, RECENT_KEY_COL_WIDTH) == 0) {
@@ -1611,6 +1630,8 @@ recent_cleanup(void)
     g_list_free_full(recent.gui_additional_toolbars, g_free);
     g_list_free_full(recent.interface_toolbars, g_free);
     prefs_clear_string_list(recent.conversation_tabs);
+    prefs_clear_string_list(recent.conversation_tabs_columns);
     prefs_clear_string_list(recent.endpoint_tabs);
+    prefs_clear_string_list(recent.endpoint_tabs_columns);
     prefs_clear_string_list(recent.custom_colors);
 }

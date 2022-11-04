@@ -28,8 +28,8 @@
         <translation>Sürüm bilgilerini panoya kopyalayın</translation>
     </message>
     <message>
-        <source>Copy To Clipboard</source>
-        <translation>Panoya kopyala</translation>
+        <source>Copy to Clipboard</source>
+        <translation>Panoya Kopyala</translation>
     </message>
     <message>
         <source>Authors</source>
@@ -1730,6 +1730,14 @@ For example, use 1 hour to have a new file created every hour on the hour.</sour
         <translation>Oluşum:</translation>
     </message>
     <message>
+        <source>Resolve Names:</source>
+        <translation>İsimleri Çöz:</translation>
+    </message>
+    <message>
+        <source>&lt;html&gt;&lt;head/&gt;&lt;p&gt;Show human-readable strings instead of raw values for fields. Only applicable to custom columns with fields that have value strings.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</source>
+        <translation>&lt;html&gt;&lt;head/&gt;&lt;p&gt;Alanlar için ham değerler yerine insan tarafından okunabilir dizeleri gösterin. Yalnızca değer dizeleri olan alanlara sahip özel sütunlar için geçerlidir.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</translation>
+    </message>
+    <message>
         <source>Missing fields.</source>
         <translation>Eksik alanlar.</translation>
     </message>
@@ -1763,6 +1771,14 @@ For example, use 1 hour to have a new file created every hour on the hour.</sour
     <message>
         <source>Field Occurrence</source>
         <translation>Alan Oluşumu</translation>
+    </message>
+    <message>
+        <source>Resolved</source>
+        <translation>Çözüldü</translation>
+    </message>
+    <message>
+        <source>&lt;html&gt;Show human-readable strings instead of raw values for fields. Only applicable to custom columns with fields that have value strings.&lt;/html&gt;</source>
+        <translation>&lt;html&gt;Alanlar için ham değerler yerine insan tarafından okunabilir dizeleri gösterin. Yalnızca değer dizeleri olan alanlara sahip özel sütunlar için geçerlidir.&lt;/html&gt;</translation>
     </message>
     <message>
         <source>New Column</source>
@@ -1808,6 +1824,81 @@ For example, use 1 hour to have a new file created every hour on the hour.</sour
     </message>
 </context>
 <context>
+    <name>ConversationDataModel</name>
+    <message>
+        <source>Address A</source>
+        <translation>Adres A</translation>
+    </message>
+    <message>
+        <source>Port A</source>
+        <translation>Bağlantı noktası A</translation>
+    </message>
+    <message>
+        <source>Address B</source>
+        <translation>Adres B</translation>
+    </message>
+    <message>
+        <source>Port B</source>
+        <translation>Bağlantı noktası B</translation>
+    </message>
+    <message>
+        <source>Packets</source>
+        <translation>Paketler</translation>
+    </message>
+    <message>
+        <source>Bytes</source>
+        <translation>Bayt</translation>
+    </message>
+    <message>
+        <source>Stream ID</source>
+        <translation>Akış Kimliği</translation>
+    </message>
+    <message>
+        <source>Packets A </source>
+        <translation>Paketler A</translation>
+    </message>
+    <message>
+        <source>Bytes A </source>
+        <translation>Bayt A</translation>
+    </message>
+    <message>
+        <source>Packets B </source>
+        <translation>Paketler B</translation>
+    </message>
+    <message>
+        <source>Bytes B </source>
+        <translation>Bayt B</translation>
+    </message>
+    <message>
+        <source>Abs Start</source>
+        <translation>Abs Başlangıç</translation>
+    </message>
+    <message>
+        <source>Rel Start</source>
+        <translation>Rel Başlangıç</translation>
+    </message>
+    <message>
+        <source>Duration</source>
+        <translation>Süre</translation>
+    </message>
+    <message>
+        <source>Bits/s A </source>
+        <translation>Bit/s A </translation>
+    </message>
+    <message>
+        <source>Bits/s B </source>
+        <translation>Bit/s B </translation>
+    </message>
+    <message>
+        <source>Total Packets</source>
+        <translation>Toplam Paket</translation>
+    </message>
+    <message>
+        <source>Percent Filtered</source>
+        <translation>Filtrelenmiş Yüzde</translation>
+    </message>
+</context>
+<context>
     <name>ConversationDialog</name>
     <message>
         <source>Follow Stream…</source>
@@ -1835,77 +1926,6 @@ For example, use 1 hour to have a new file created every hour on the hour.</sour
     <message>
         <source>Conversation Hash Tables</source>
         <translation>Konuşma Karma Tabloları</translation>
-    </message>
-</context>
-<context>
-    <name>ConversationTreeWidget</name>
-    <message>
-        <source>Connection A</source>
-        <translation>Bağlantı A</translation>
-    </message>
-    <message>
-        <source>Connection B</source>
-        <translation>Bağlantı B</translation>
-    </message>
-    <message>
-        <source>Resize all columns to content</source>
-        <translation>Tüm sütunları içeriğe göre yeniden boyutlandır</translation>
-    </message>
-    <message>
-        <source>Address A</source>
-        <translation>Adres A</translation>
-    </message>
-    <message>
-        <source>Port A</source>
-        <translation>Bağlantı noktası A</translation>
-    </message>
-    <message>
-        <source>Address B</source>
-        <translation>Adres B</translation>
-    </message>
-    <message>
-        <source>Port B</source>
-        <translation>Bağlantı noktası B</translation>
-    </message>
-    <message>
-        <source>Packets</source>
-        <translation>Paketler</translation>
-    </message>
-    <message>
-        <source>Bytes</source>
-        <translation>Bayt</translation>
-    </message>
-    <message>
-        <source>Packets A </source>
-        <translation>Paketler A</translation>
-    </message>
-    <message>
-        <source>Bytes A </source>
-        <translation>Bayt A</translation>
-    </message>
-    <message>
-        <source>Packets B </source>
-        <translation>Paketler B</translation>
-    </message>
-    <message>
-        <source>Rel Start</source>
-        <translation>Rel Başlangıç</translation>
-    </message>
-    <message>
-        <source>Duration</source>
-        <translation>Süre</translation>
-    </message>
-    <message>
-        <source>Bits/s A </source>
-        <translation>Bit/s A </translation>
-    </message>
-    <message>
-        <source>Bits/s B </source>
-        <translation>Bit/s B </translation>
-    </message>
-    <message>
-        <source>Abs Start</source>
-        <translation>Abs Başlangıç</translation>
     </message>
 </context>
 <context>
@@ -1998,6 +2018,14 @@ For example, use 1 hour to have a new file created every hour on the hour.</sour
     <message>
         <source>Copy packet bytes as a stream of hex.</source>
         <translation>Paket baytlarını bir hex akışı olarak kopyalayın.</translation>
+    </message>
+    <message>
+        <source>…as a Base64 String</source>
+        <translation>…Base64 Dizesi olarak</translation>
+    </message>
+    <message>
+        <source>Copy packet bytes as a base64 encoded string.</source>
+        <translation>Paket baytlarını base64 kodlu bir dize olarak kopyalayın.</translation>
     </message>
     <message>
         <source>…as Raw Binary</source>
@@ -2215,6 +2243,22 @@ For example, use 1 hour to have a new file created every hour on the hour.</sour
         <translation>İlişki</translation>
     </message>
     <message>
+        <source>By default order comparisons and contains/matches/in relations are true if any value matches. The quantifier &quot;all&quot; can be used to apply the test to all values in a frame.</source>
+        <translation>Herhangi bir değer eşleşirse, varsayılan olarak sıra karşılaştırmaları ve içerir/eşleşir/içinde ilişkileri doğrudur. &quot;tümü&quot; niceleyicisi, testi bir çerçevedeki tüm değerlere uygulamak için kullanılabilir.</translation>
+    </message>
+    <message>
+        <source>Quantifier</source>
+        <translation>Niceleyici</translation>
+    </message>
+    <message>
+        <source>Any</source>
+        <translation>Herhangi biri</translation>
+    </message>
+    <message>
+        <source>All</source>
+        <translation>Tümü</translation>
+    </message>
+    <message>
         <source>Match against this value.</source>
         <translation>Bu değere karşı eşleştirin.</translation>
     </message>
@@ -2285,8 +2329,8 @@ For example, use 1 hour to have a new file created every hour on the hour.</sour
         <translation>Dize</translation>
     </message>
     <message>
-        <source>Dissector</source>
-        <translation>Tespit edici</translation>
+        <source>Dissector Description</source>
+        <translation>Tespit edici Tanımı</translation>
     </message>
     <message>
         <source>Integer</source>
@@ -2388,58 +2432,7 @@ For example, use 1 hour to have a new file created every hour on the hour.</sour
     </message>
 </context>
 <context>
-    <name>EndpointDialog</name>
-    <message>
-        <source>Map</source>
-        <translation>Harita</translation>
-    </message>
-    <message>
-        <source>Draw IPv4 or IPv6 endpoints on a map.</source>
-        <translation>Bir harita üzerinde IPv4 veya IPv6 uç noktaları çizin.</translation>
-    </message>
-    <message>
-        <source>Open in browser</source>
-        <translation>Tarayıcıda aç</translation>
-    </message>
-    <message>
-        <source>Save As…</source>
-        <translation>Farklı Kaydet…</translation>
-    </message>
-    <message>
-        <source>Map file error</source>
-        <translation>Harita dosyası hatası</translation>
-    </message>
-    <message>
-        <source>Could not open base file %1 for reading: %2</source>
-        <translation>%1 temel dosyası şu okuma için açılamadı: %2</translation>
-    </message>
-    <message>
-        <source>No endpoints available to map</source>
-        <translation>Haritalanacak uç nokta yok</translation>
-    </message>
-    <message>
-        <source>Unable to create temporary file</source>
-        <translation>Geçici dosya oluşturulamıyor</translation>
-    </message>
-    <message>
-        <source>Save Endpoints Map</source>
-        <translation>Uç Nokta Haritasını Kaydet</translation>
-    </message>
-    <message>
-        <source>Failed to save map file %1.</source>
-        <translation>%1 harita dosyası kaydedilemedi.</translation>
-    </message>
-</context>
-<context>
-    <name>EndpointTreeWidget</name>
-    <message>
-        <source>Connection</source>
-        <translation>Bağlantı</translation>
-    </message>
-    <message>
-        <source>Resize all columns to content</source>
-        <translation>Tüm sütunları içeriğe göre yeniden boyutlandır</translation>
-    </message>
+    <name>EndpointDataModel</name>
     <message>
         <source>Address</source>
         <translation>Adres</translation>
@@ -2487,6 +2480,45 @@ For example, use 1 hour to have a new file created every hour on the hour.</sour
     <message>
         <source>AS Organization</source>
         <translation>AS Organizasyonu</translation>
+    </message>
+    <message>
+        <source>Total Packets</source>
+        <translation>Toplam Paket</translation>
+    </message>
+    <message>
+        <source>Percent Filtered</source>
+        <translation>Filtrelenmiş Yüzde</translation>
+    </message>
+</context>
+<context>
+    <name>EndpointDialog</name>
+    <message>
+        <source>Map</source>
+        <translation>Harita</translation>
+    </message>
+    <message>
+        <source>Draw IPv4 or IPv6 endpoints on a map.</source>
+        <translation>Bir harita üzerinde IPv4 veya IPv6 uç noktaları çizin.</translation>
+    </message>
+    <message>
+        <source>Open in browser</source>
+        <translation>Tarayıcıda aç</translation>
+    </message>
+    <message>
+        <source>Save As…</source>
+        <translation>Farklı Kaydet…</translation>
+    </message>
+    <message>
+        <source>Map file error</source>
+        <translation>Harita dosyası hatası</translation>
+    </message>
+    <message>
+        <source>Save Endpoints Map</source>
+        <translation>Uç Nokta Haritasını Kaydet</translation>
+    </message>
+    <message>
+        <source>Failed to save map file %1.</source>
+        <translation>%1 harita dosyası kaydedilemedi.</translation>
     </message>
 </context>
 <context>
@@ -3367,20 +3399,10 @@ For example, use 1 hour to have a new file created every hour on the hour.</sour
         </translation>
     </message>
     <message numerus="yes">
-        <source>Total number of QUIC connections: %Ln</source>
-        <translation>
-            <numerusform>Toplam QUIC bağlantı sayısı: %Ln</numerusform>
-        </translation>
-    </message>
-    <message numerus="yes">
         <source>Max QUIC Stream ID for the selected connection: %Ln</source>
         <translation>
             <numerusform>Seçilen bağlantı için Azami. QUIC Akış Kimliği: %Ln</numerusform>
         </translation>
-    </message>
-    <message>
-        <source>No streams</source>
-        <translation>Akış yok</translation>
     </message>
     <message>
         <source>Entire conversation (%1)</source>
@@ -6306,12 +6328,14 @@ For example, use 1 hour to have a new file created every hour on the hour.</sour
         <translation>İçe Aktar</translation>
     </message>
     <message>
-        <source>from zip file</source>
-        <translation>zip dosyasından</translation>
+        <source>From Zip File...</source>
+        <oldsource>from zip file</oldsource>
+        <translation type="unfinished">zip dosyasından</translation>
     </message>
     <message>
-        <source>from directory</source>
-        <translation>dizinden</translation>
+        <source>From Directory...</source>
+        <oldsource>from directory</oldsource>
+        <translation type="unfinished">dizinden</translation>
     </message>
     <message>
         <source>Export</source>
@@ -6405,12 +6429,14 @@ For example, use 1 hour to have a new file created every hour on the hour.</sour
         <translation>Paket Yok</translation>
     </message>
     <message>
-        <source>selected personal profile</source>
-        <translation>seçilen kişisel profil</translation>
+        <source>Selected Personal Profile...</source>
+        <oldsource>selected personal profile</oldsource>
+        <translation type="unfinished">seçilen kişisel profil</translation>
     </message>
     <message>
-        <source>all personal profiles</source>
-        <translation>tüm kişisel profiller</translation>
+        <source>All Personal Profiles...</source>
+        <oldsource>all personal profiles</oldsource>
+        <translation type="unfinished">tüm kişisel profiller</translation>
     </message>
     <message>
         <source>Packets: %1</source>
@@ -7360,8 +7386,9 @@ For example, use 1 hour to have a new file created every hour on the hour.</sour
         </translation>
     </message>
     <message numerus="yes">
-        <source>%Ln selected personal profile(s)</source>
-        <translation>
+        <source>%Ln Selected Personal Profile(s)...</source>
+        <oldsource>%Ln selected personal profile(s)</oldsource>
+        <translation type="unfinished">
             <numerusform>%Ln seçilmiş kişisel profil</numerusform>
         </translation>
     </message>
@@ -7400,16 +7427,19 @@ For example, use 1 hour to have a new file created every hour on the hour.</sour
         <translation>Zip Dosyası (*.zip)</translation>
     </message>
     <message>
-        <source>from zip file</source>
-        <translation>zip dosyasından</translation>
+        <source>From Zip File...</source>
+        <oldsource>from zip file</oldsource>
+        <translation type="unfinished">zip dosyasından</translation>
     </message>
     <message>
-        <source>from directory</source>
-        <translation>dizinden</translation>
+        <source>From Directory...</source>
+        <oldsource>from directory</oldsource>
+        <translation type="unfinished">dizinden</translation>
     </message>
     <message>
-        <source>all personal profiles</source>
-        <translation>tüm kişisel profiller</translation>
+        <source>All Personal Profiles...</source>
+        <oldsource>all personal profiles</oldsource>
+        <translation type="unfinished">tüm kişisel profiller</translation>
     </message>
     <message>
         <source>Error</source>
@@ -10892,6 +10922,10 @@ For example, use 1 hour to have a new file created every hour on the hour.</sour
         <translation>Onaltılı Rakamlar</translation>
     </message>
     <message>
+        <source>Percent-Encoding</source>
+        <translation>Yüzde-Kodlama</translation>
+    </message>
+    <message>
         <source>Quoted-Printable</source>
         <translation>Alıntı-Yazdırılabilir</translation>
     </message>
@@ -10926,10 +10960,6 @@ For example, use 1 hour to have a new file created every hour on the hour.</sour
     <message>
         <source>Image</source>
         <translation>Görüntü</translation>
-    </message>
-    <message>
-        <source>Json</source>
-        <translation>Json</translation>
     </message>
     <message>
         <source>Raw</source>
@@ -10968,6 +10998,10 @@ For example, use 1 hour to have a new file created every hour on the hour.</sour
         <translation>
             <numerusform>%Ln bayt gösteriliyor.</numerusform>
         </translation>
+    </message>
+    <message>
+        <source>JSON</source>
+        <translation>JSON</translation>
     </message>
     <message>
         <source>Regex Find:</source>
@@ -11107,6 +11141,10 @@ For example, use 1 hour to have a new file created every hour on the hour.</sour
 </context>
 <context>
     <name>SyntaxLineEdit</name>
+    <message>
+        <source>Invalid filter: %1</source>
+        <translation>Geçersiz filtre: %1</translation>
+    </message>
     <message>
         <source>&quot;%1&quot; is deprecated in favour of &quot;%2&quot;. See Help section 6.4.8 for details.</source>
         <translation>&quot;%1&quot;, &quot;%2&quot; yerine kullanımdan kaldırıldı. Ayrıntılar için Yardım bölümü 6.4.8&apos;e bakın.</translation>
@@ -11823,6 +11861,25 @@ For example, use 1 hour to have a new file created every hour on the hour.</sour
     </message>
 </context>
 <context>
+    <name>TrafficTab</name>
+    <message>
+        <source>Map file error</source>
+        <translation>Harita dosyası hatası</translation>
+    </message>
+    <message>
+        <source>Could not open base file %1 for reading: %2</source>
+        <translation>%1 temel dosyası şu okuma için açılamadı: %2</translation>
+    </message>
+    <message>
+        <source>No endpoints available to map</source>
+        <translation>Haritalanacak uç nokta yok</translation>
+    </message>
+    <message>
+        <source>Unable to create temporary file</source>
+        <translation>Geçici dosya oluşturulamıyor</translation>
+    </message>
+</context>
+<context>
     <name>TrafficTableDialog</name>
     <message>
         <source>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Show resolved addresses and port names rather than plain values. The corresponding name resolution preference must be enabled.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</source>
@@ -11841,24 +11898,47 @@ For example, use 1 hour to have a new file created every hour on the hour.</sour
         <translation>Görüntüleme filtresini sınırla</translation>
     </message>
     <message>
+        <source>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Only show types matching the filter value&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</source>
+        <translation>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Yalnızca filtre değeriyle eşleşen türleri göster&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</translation>
+    </message>
+    <message>
+        <source>Filter list for specific type</source>
+        <translation>Belirli bir tür için filtre listesi</translation>
+    </message>
+    <message>
         <source>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Show absolute times in the start time column.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</source>
         <translation>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Başlangıç zamanı sütununda mutlak zamanları göster.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</translation>
+    </message>
+    <message>
+        <source>GroupBox</source>
+        <translation>GrupKutusu</translation>
     </message>
     <message>
         <source>Absolute start time</source>
         <translation>Mutlak başlangıç zamanı</translation>
     </message>
     <message>
-        <source>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Add and remove conversation types.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</source>
-        <translation>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Konuşma türleri ekleyin ve kaldırın.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</translation>
-    </message>
-    <message>
-        <source>%1 Types</source>
-        <translation>%1 Türler</translation>
-    </message>
-    <message>
         <source>Copy</source>
         <translation>Kopyala</translation>
+    </message>
+    <message>
+        <source>Unknown</source>
+        <translation>Bilinmiyor</translation>
+    </message>
+</context>
+<context>
+    <name>TrafficTree</name>
+    <message>
+        <source>Resize all columns to content</source>
+        <translation>Tüm sütunları içeriğe göre yeniden boyutlandır</translation>
+    </message>
+    <message>
+        <source>Filter on stream id</source>
+        <translation>Akış kimliğine göre filtrele</translation>
+    </message>
+    <message>
+        <source>Copy %1 table</source>
+        <translation>%1 tablosunu kopyala</translation>
     </message>
     <message>
         <source>as CSV</source>
@@ -11877,8 +11957,54 @@ For example, use 1 hour to have a new file created every hour on the hour.</sour
         <translation>Bu sayfanın tüm değerlerini YAML veri serileştirme biçiminde panoya kopyalayın.</translation>
     </message>
     <message>
-        <source>Unknown</source>
-        <translation>Bilinmiyor</translation>
+        <source>as JSON</source>
+        <translation>JSON olarak</translation>
+    </message>
+    <message>
+        <source>Copy all values of this page to the clipboard in the JSON data serialization format.</source>
+        <translation>Bu sayfanın tüm değerlerini JSON veri serileştirme biçiminde panoya kopyalayın.</translation>
+    </message>
+    <message>
+        <source>Save data as raw</source>
+        <translation>Verileri ham olarak kaydet</translation>
+    </message>
+    <message>
+        <source>Disable data formatting for export/clipboard and save as raw data</source>
+        <translation>Dışa aktarma/pano için veri biçimlendirmesini devre dışı bırakın ve ham veri olarak kaydedin</translation>
+    </message>
+</context>
+<context>
+    <name>TrafficTreeHeaderView</name>
+    <message>
+        <source>Less than</source>
+        <translation>Daha az</translation>
+    </message>
+    <message>
+        <source>Greater than</source>
+        <translation>Daha büyük</translation>
+    </message>
+    <message>
+        <source>Equal</source>
+        <translation>Eşit</translation>
+    </message>
+    <message>
+        <source>Columns to display</source>
+        <translation>Görüntülenecek sütunlar</translation>
+    </message>
+    <message>
+        <source>Filter %1 by</source>
+        <translation>%1&apos;e göre filtrele</translation>
+    </message>
+    <message>
+        <source>Enter filter value</source>
+        <translation>Filtre değerini girin</translation>
+    </message>
+</context>
+<context>
+    <name>TrafficTypesModel</name>
+    <message>
+        <source>Protocol</source>
+        <translation>İletişim Kuralı</translation>
     </message>
 </context>
 <context>
@@ -12227,24 +12353,32 @@ a:hover {
 
 &lt;th&gt;&lt;a href=&quot;https://www.wireshark.org/lists/&quot;&gt;Mailing Lists&lt;/a&gt;&lt;/th&gt;
 
+&lt;td style=&quot;padding-left: 8px; padding-right: 8px;&quot;&gt;·&lt;/td&gt;
+
+&lt;th&gt;&lt;a href=&quot;https://sharkfest.wireshark.org/&quot;&gt;SharkFest&lt;/a&gt;&lt;/th&gt;
+
+&lt;td style=&quot;padding-left: 8px; padding-right: 8px;&quot;&gt;·&lt;/td&gt;
+
+&lt;th&gt;&lt;a href=&quot;https://discord.com/invite/ts9GZCjGj5&quot;&gt;Wireshark Discord&lt;/a&gt;&lt;/th&gt;
+
 &lt;/tr&gt;&lt;/table&gt;
 &lt;/body&gt;&lt;/html&gt;</source>
         <translation>&lt;html&gt;&lt;head&gt;
 &lt;style&gt;
-a:link {
-  renk: paleti(metin);
-  metin-dekorasyon: yok;
+a:bağlantı {
+  renk: palet(metin);
+  metin-süsleme: hiçbiri;
 }
 a:hover {
   renk: palet(metin);
-  metin-dekorasyon: altı çizgili;
+  metin-süsleme: altçizgili;
 }
 &lt;/style&gt;
 &lt;/head&gt;
 &lt;body&gt;
 
 &lt;table&gt;&lt;tr&gt;
-&lt;th&gt;&lt;a href=&quot;https://www.wireshark.org/docs/wsug_html_chunked/&quot;&gt;Kullanım Klavuzu&lt;/a&gt;&lt;/th&gt;
+&lt;th&gt;&lt;a href=&quot;https://www.wireshark.org/docs/wsug_html_chunked/&quot;&gt;Kullanıcı Klavuzu&lt;/a&gt;&lt;/th&gt;
 
 &lt;td style=&quot;padding-left: 8px; padding-right: 8px;&quot;&gt;·&lt;/td&gt;
 
@@ -12252,11 +12386,19 @@ a:hover {
 
 &lt;td style=&quot;padding-left: 8px; padding-right: 8px;&quot;&gt;·&lt;/td&gt;
 
-&lt;th&gt;&lt;a href=&quot;https://ask.wireshark.org/&quot;&gt;Sorular ve Cevaplar&lt;/a&gt;&lt;/th&gt;
+&lt;th&gt;&lt;a href=&quot;https://ask.wireshark.org/&quot;&gt;Sorular ve Yanıtlar&lt;/a&gt;&lt;/th&gt;
 
 &lt;td style=&quot;padding-left: 8px; padding-right: 8px;&quot;&gt;·&lt;/td&gt;
 
 &lt;th&gt;&lt;a href=&quot;https://www.wireshark.org/lists/&quot;&gt;Mail Listesi&lt;/a&gt;&lt;/th&gt;
+
+&lt;td style=&quot;padding-left: 8px; padding-right: 8px;&quot;&gt;·&lt;/td&gt;
+
+&lt;th&gt;&lt;a href=&quot;https://sharkfest.wireshark.org/&quot;&gt;SharkFest&lt;/a&gt;&lt;/th&gt;
+
+&lt;td style=&quot;padding-left: 8px; padding-right: 8px;&quot;&gt;·&lt;/td&gt;
+
+&lt;th&gt;&lt;a href=&quot;https://discord.com/invite/ts9GZCjGj5&quot;&gt;Wireshark Discord&lt;/a&gt;&lt;/th&gt;
 
 &lt;/tr&gt;&lt;/table&gt;
 &lt;/body&gt;&lt;/html&gt;</translation>
@@ -12824,6 +12966,10 @@ a:hover {
         <translation>BAZI/IP</translation>
     </message>
     <message>
+        <source>&amp;DTN</source>
+        <translation>&amp;DTN</translation>
+    </message>
+    <message>
         <source>Osmux</source>
         <translation>Osmux</translation>
     </message>
@@ -13303,6 +13449,14 @@ a:hover {
         <translation>BAZI/IP-SD Girdi istatistikleri</translation>
     </message>
     <message>
+        <source>&amp;LTP</source>
+        <translation>&amp;LTP</translation>
+    </message>
+    <message>
+        <source>LTP segment and block statistics</source>
+        <translation>LTP bölümü ve blok istatistikleri</translation>
+    </message>
+    <message>
         <source>&amp;ISUP Messages</source>
         <translation>&amp;ISUP Mesajları</translation>
     </message>
@@ -13449,6 +13603,10 @@ a:hover {
     <message>
         <source>Reset appearance layout to default size</source>
         <translation>Görünüm düzenini varsayılan boyuta sıfırla</translation>
+    </message>
+    <message>
+        <source>Seconds Since First Captured Packet</source>
+        <translation>İlk Yakalanan Paketten Beri Saniye</translation>
     </message>
     <message>
         <source>Packet &amp;Diagram</source>
@@ -13773,10 +13931,6 @@ a:hover {
     <message>
         <source>Show packet times as the seconds since the UNIX / POSIX epoch (1970-01-01).</source>
         <translation>Paket sürelerini UNIX / POSIX döneminden (1970-01-01) bu yana saniye olarak göster.</translation>
-    </message>
-    <message>
-        <source>Seconds Since Beginning of Capture</source>
-        <translation>Yakalama Başlangıcından Beri Saniyeler</translation>
     </message>
     <message>
         <source>Seconds Since Previous Captured Packet</source>

@@ -45,12 +45,6 @@ struct epan_range;
 }
 #endif /* __cplusplus */
 
-// qsizetype was added in Qt 5.10.0 and is used in the Qt 6 API.
-#if QT_VERSION < QT_VERSION_CHECK(5, 10, 0)
-#include "include/ws_posix_compat.h"
-typedef ssize_t qsizetype;
-#endif
-
 /*
  * Helper macro, to prevent old-style-cast warnings, when using GList in c++ code
  */
@@ -258,6 +252,21 @@ void qvector_rtpstream_ids_free(QVector<rtpstream_id_t *> stream_ids);
  * @return Filter or empty string
  */
 QString make_filter_based_on_rtpstream_id(QVector<rtpstream_id_t *> stream_ids);
+
+/**
+ * @brief Return the last directory that had been opened.
+ *
+ * This can be influenced by prefs.gui_fileopen_style which will allow to either
+ * open the real last dir or have the user set one specifically.
+ *
+ * @return a reference to that directory.
+ */
+QString lastOpenDir();
+
+/**
+ * @brief Store the directory as last directory being used
+ */
+void storeLastDir(QString dir);
 
 #endif /* __QT_UI_UTILS__H__ */
 

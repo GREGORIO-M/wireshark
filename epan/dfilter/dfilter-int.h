@@ -16,6 +16,12 @@
 #include <epan/proto.h>
 #include <stdio.h>
 
+typedef struct {
+	const header_field_info *hfinfo;
+	fvalue_t *value;
+	int proto_layer_num;
+} df_reference_t;
+
 /* Passed back to user */
 struct epan_dfilter {
 	GPtrArray	*insns;
@@ -28,6 +34,7 @@ struct epan_dfilter {
 	GPtrArray	*deprecated;
 	char		*expanded_text;
 	GHashTable	*references;
+	GHashTable	*raw_references;
 	char		*syntax_tree_str;
 	/* Used to pass arguments to functions. List of Lists (list of registers). */
 	GSList		*function_stack;
@@ -40,12 +47,13 @@ typedef struct {
 	gchar		*error_message;
 	GPtrArray	*insns;
 	GHashTable	*loaded_fields;
+	GHashTable	*loaded_raw_fields;
 	GHashTable	*interesting_fields;
 	int		next_insn_id;
 	int		next_register;
 	GPtrArray	*deprecated;
-	GHashTable	*references; /* hfinfo -> pointer to GSList of fvalues */
-	GHashTable	*loaded_references;
+	GHashTable	*references; /* hfinfo -> pointer to array of references */
+	GHashTable	*raw_references; /* hfinfo -> pointer to array of references */
 	char		*expanded_text;
 	stloc_t		err_loc;
 } dfwork_t;
@@ -99,13 +107,6 @@ DfilterTrace(FILE *TraceFILE, char *zTracePrompt);
 header_field_info *
 dfilter_resolve_unparsed(dfwork_t *dfw, const char *name);
 
-gboolean
-dfw_resolve_unparsed(dfwork_t *dfw, stnode_t *st);
-
-fvalue_t *
-dfilter_fvalue_from_unparsed(dfwork_t *dfw, ftenum_t ftype, stnode_t *st,
-		gboolean allow_partial_value, header_field_info *hfinfo_value_string);
-
 WS_RETNONNULL fvalue_t*
 dfilter_fvalue_from_literal(dfwork_t *dfw, ftenum_t ftype, stnode_t *st,
 		gboolean allow_partial_value, header_field_info *hfinfo_value_string);
@@ -118,5 +119,11 @@ WS_RETNONNULL fvalue_t *
 dfilter_fvalue_from_charconst(dfwork_t *dfw, ftenum_t ftype, stnode_t *st);
 
 const char *tokenstr(int token);
+
+df_reference_t *
+reference_new(const field_info *finfo, gboolean raw);
+
+void
+reference_free(df_reference_t *ref);
 
 #endif

@@ -97,11 +97,6 @@ DIAG_ON(frame-larger-than=)
 // If we ever add support for multiple windows this will need to be replaced.
 static WiresharkMainWindow *gbl_cur_main_window_ = NULL;
 
-void pipe_input_set_handler(gint source, gpointer user_data, ws_process_id *child_process, pipe_input_cb_t input_cb)
-{
-    gbl_cur_main_window_->setPipeInputHandler(source, user_data, child_process, input_cb);
-}
-
 static void plugin_if_mainwindow_apply_filter(GHashTable * data_set)
 {
     if (!gbl_cur_main_window_ || !data_set)
@@ -333,13 +328,6 @@ WiresharkMainWindow::WiresharkMainWindow(QWidget *parent) :
 #ifdef HAVE_LIBPCAP
     , capture_options_dialog_(NULL)
     , info_data_()
-#endif
-    , display_filter_dlg_(NULL)
-    , capture_filter_dlg_(NULL)
-#ifdef _WIN32
-    , pipe_timer_(NULL)
-#else
-    , pipe_notifier_(NULL)
 #endif
 #if defined(Q_OS_MAC)
     , dock_menu_(NULL)
@@ -636,27 +624,36 @@ main_ui_->goToLineEdit->setValidator(goToLineQiv);
     connect(mainApp, SIGNAL(zoomMonospaceFont(QFont)),
             proto_tree_, SLOT(setMonospaceFont(QFont)));
 
-    connect(main_ui_->actionGoNextPacket, SIGNAL(triggered()),
-            packet_list_, SLOT(goNextPacket()));
-    connect(main_ui_->actionGoPreviousPacket, SIGNAL(triggered()),
-            packet_list_, SLOT(goPreviousPacket()));
-    connect(main_ui_->actionGoFirstPacket, SIGNAL(triggered()),
-            packet_list_, SLOT(goFirstPacket()));
-    connect(main_ui_->actionGoLastPacket, SIGNAL(triggered()),
-            packet_list_, SLOT(goLastPacket()));
-    connect(main_ui_->actionGoNextHistoryPacket, SIGNAL(triggered()),
-            packet_list_, SLOT(goNextHistoryPacket()));
-    connect(main_ui_->actionGoPreviousHistoryPacket, SIGNAL(triggered()),
-            packet_list_, SLOT(goPreviousHistoryPacket()));
+    connectFileMenuActions();
+    connectEditMenuActions();
+    connectViewMenuActions();
+    connectGoMenuActions();
+    connectCaptureMenuActions();
 
-    connect(main_ui_->actionViewExpandSubtrees, SIGNAL(triggered()),
-            proto_tree_, SLOT(expandSubtrees()));
-    connect(main_ui_->actionViewCollapseSubtrees, SIGNAL(triggered()),
-            proto_tree_, SLOT(collapseSubtrees()));
-    connect(main_ui_->actionViewExpandAll, SIGNAL(triggered()),
-            proto_tree_, SLOT(expandAll()));
-    connect(main_ui_->actionViewCollapseAll, SIGNAL(triggered()),
-            proto_tree_, SLOT(collapseAll()));
+    connect(main_ui_->actionAnalyzeFollowTCPStream, &QAction::triggered, this,
+            [this]() { this->openFollowStreamDialogForType(FOLLOW_TCP); },
+            Qt::QueuedConnection);
+    connect(main_ui_->actionAnalyzeFollowUDPStream, &QAction::triggered, this,
+            [this]() { this->openFollowStreamDialogForType(FOLLOW_UDP); },
+            Qt::QueuedConnection);
+    connect(main_ui_->actionAnalyzeFollowDCCPStream, &QAction::triggered, this,
+            [this]() { this->openFollowStreamDialogForType(FOLLOW_DCCP); },
+            Qt::QueuedConnection);
+    connect(main_ui_->actionAnalyzeFollowTLSStream, &QAction::triggered, this,
+            [this]() { this->openFollowStreamDialogForType(FOLLOW_TLS); },
+            Qt::QueuedConnection);
+    connect(main_ui_->actionAnalyzeFollowHTTPStream, &QAction::triggered, this,
+            [this]() { this->openFollowStreamDialogForType(FOLLOW_HTTP); },
+            Qt::QueuedConnection);
+    connect(main_ui_->actionAnalyzeFollowHTTP2Stream, &QAction::triggered, this,
+            [this]() { this->openFollowStreamDialogForType(FOLLOW_HTTP2); },
+            Qt::QueuedConnection);
+    connect(main_ui_->actionAnalyzeFollowQUICStream, &QAction::triggered, this,
+            [this]() { this->openFollowStreamDialogForType(FOLLOW_QUIC); },
+            Qt::QueuedConnection);
+    connect(main_ui_->actionAnalyzeFollowSIPCall, &QAction::triggered, this,
+            [this]() { this->openFollowStreamDialogForType(FOLLOW_SIP); },
+            Qt::QueuedConnection);
 
     connect(packet_list_, SIGNAL(packetDissectionChanged()),
             this, SLOT(redissectPackets()));
@@ -681,14 +678,14 @@ main_ui_->goToLineEdit->setValidator(goToLineQiv);
     connect(proto_tree_, SIGNAL(editProtocolPreference(preference*, pref_module*)),
             main_ui_->preferenceEditorFrame, SLOT(editPreference(preference*, pref_module*)));
 
-    connect(main_ui_->statusBar, SIGNAL(showExpertInfo()),
-            this, SLOT(on_actionAnalyzeExpertInfo_triggered()));
+    connect(main_ui_->statusBar, &MainStatusBar::showExpertInfo,
+            this, &WiresharkMainWindow::on_actionAnalyzeExpertInfo_triggered);
 
-    connect(main_ui_->statusBar, SIGNAL(stopLoading()),
-            &capture_file_, SLOT(stopLoading()));
+    connect(main_ui_->statusBar, &MainStatusBar::stopLoading,
+            &capture_file_, &CaptureFile::stopLoading);
 
-    connect(main_ui_->statusBar, SIGNAL(editCaptureComment()),
-            this, SLOT(on_actionStatisticsCaptureFileProperties_triggered()));
+    connect(main_ui_->statusBar, &MainStatusBar::editCaptureComment,
+            this, &WiresharkMainWindow::on_actionStatisticsCaptureFileProperties_triggered);
 
     connect(main_ui_->menuApplyAsFilter, &QMenu::aboutToShow,
             this, &WiresharkMainWindow::filterMenuAboutToShow);
@@ -760,8 +757,6 @@ WiresharkMainWindow::~WiresharkMainWindow()
     // freed by its parent. Free then here explicitly to avoid leak and numerous
     // Valgrind complaints.
     delete file_set_dialog_;
-    delete capture_filter_dlg_;
-    delete display_filter_dlg_;
 #ifdef HAVE_LIBPCAP
     delete capture_options_dialog_;
 #endif
@@ -875,43 +870,6 @@ void WiresharkMainWindow::removeInterfaceToolbar(const gchar *menu_title)
     menu->menuAction()->setVisible(!menu->actions().isEmpty());
 }
 
-void WiresharkMainWindow::setPipeInputHandler(gint source, gpointer user_data, ws_process_id *child_process, pipe_input_cb_t input_cb)
-{
-    pipe_source_        = source;
-    pipe_child_process_ = child_process;
-    pipe_user_data_     = user_data;
-    pipe_input_cb_      = input_cb;
-
-#ifdef _WIN32
-    /* Tricky to use pipes in win9x, as no concept of wait.  NT can
-       do this but that doesn't cover all win32 platforms.  GTK can do
-       this but doesn't seem to work over processes.  Attempt to do
-       something similar here, start a timer and check for data on every
-       timeout. */
-       /*ws_log(NULL, LOG_LEVEL_DEBUG, "pipe_input_set_handler: new");*/
-
-    if (pipe_timer_) {
-        disconnect(pipe_timer_, SIGNAL(timeout()), this, SLOT(pipeTimeout()));
-        delete pipe_timer_;
-    }
-
-    pipe_timer_ = new QTimer(this);
-    connect(pipe_timer_, SIGNAL(timeout()), this, SLOT(pipeTimeout()));
-    connect(pipe_timer_, SIGNAL(destroyed()), this, SLOT(pipeNotifierDestroyed()));
-    pipe_timer_->start(200);
-#else
-    if (pipe_notifier_) {
-        disconnect(pipe_notifier_, SIGNAL(activated(int)), this, SLOT(pipeActivated(int)));
-        delete pipe_notifier_;
-    }
-
-    pipe_notifier_ = new QSocketNotifier(pipe_source_, QSocketNotifier::Read);
-    // XXX ui/gtk/gui_utils.c sets the encoding. Do we need to do the same?
-    connect(pipe_notifier_, SIGNAL(activated(int)), this, SLOT(pipeActivated(int)));
-    connect(pipe_notifier_, SIGNAL(destroyed()), this, SLOT(pipeNotifierDestroyed()));
-#endif
-}
-
 bool WiresharkMainWindow::eventFilter(QObject *obj, QEvent *event) {
 
     // The user typed some text. Start filling in a filter.
@@ -974,6 +932,13 @@ void WiresharkMainWindow::keyPressEvent(QKeyEvent *event) {
 }
 
 void WiresharkMainWindow::closeEvent(QCloseEvent *event) {
+    if (main_ui_->actionCaptureStop->isEnabled()) {
+        // Capture is running, we should stop it before close and ignore the event
+        stopCapture();
+        event->ignore();
+        return;
+    }
+
     saveWindowGeometry();
 
     /* If we're in the middle of stopping a capture, don't do anything;
@@ -1255,13 +1220,13 @@ void WiresharkMainWindow::mergeCaptureFile()
     }
 
     for (;;) {
-        CaptureFileDialog merge_dlg(this, capture_file_.capFile(), read_filter);
+        CaptureFileDialog merge_dlg(this, capture_file_.capFile());
         int file_type;
         cf_status_t  merge_status;
         char        *in_filenames[2];
         char        *tmpname;
 
-        if (merge_dlg.merge(file_name)) {
+        if (merge_dlg.merge(file_name, read_filter)) {
             gchar *err_msg;
 
             if (!dfilter_compile(qUtf8Printable(read_filter), &rfcode, &err_msg)) {
@@ -1442,7 +1407,7 @@ bool WiresharkMainWindow::saveCaptureFile(capture_file *cf, bool dont_reopen) {
                    If we discarded comments, redraw the packet list to reflect
                    any packets that no longer have comments. */
                 if (discard_comments)
-                    packet_list_queue_draw();
+                    packet_list_->redrawVisiblePackets();
 
                 cf->unsaved_changes = false; //we just saved so we signal that we have no unsaved changes
                 updateForUnsavedChanges(); // we update the title bar to remove the *
@@ -1556,7 +1521,7 @@ bool WiresharkMainWindow::saveAsCaptureFile(capture_file *cf, bool must_support_
             /* If we discarded comments, redraw the packet list to reflect
                any packets that no longer have comments. */
             if (discard_comments)
-                packet_list_queue_draw();
+                packet_list_->redrawVisiblePackets();
 
             cf->unsaved_changes = false; //we just saved so we signal that we have no unsaved changes
             updateForUnsavedChanges(); // we update the title bar to remove the *
@@ -1698,7 +1663,7 @@ void WiresharkMainWindow::exportSelectedPackets() {
             /* If we discarded comments, redraw the packet list to reflect
                any packets that no longer have comments. */
             if (discard_comments)
-                packet_list_queue_draw();
+                packet_list_->redrawVisiblePackets();
             /* Add this filename to the list of recent files in the "Recent Files" submenu */
             add_menu_recent_capture_file(qUtf8Printable(file_name));
             goto cleanup;
@@ -2067,6 +2032,13 @@ void WiresharkMainWindow::findTextCodecs() {
     QRegularExpressionMatch match;
     for (int mib : mibs) {
         QTextCodec *codec = QTextCodec::codecForMib(mib);
+        // QTextCodec::availableMibs() returns a list of hard-coded MIB
+        // numbers, it doesn't check if they are really available. ICU data may
+        // not have been compiled with support for all encodings.
+        if (!codec) {
+            continue;
+        }
+
         QString key = codec->name().toUpper();
         char rank;
 
@@ -2204,7 +2176,7 @@ void WiresharkMainWindow::initTimeDisplayFormatMenu()
     td_actions[main_ui_->actionViewTimeDisplayFormatDateYDOYandTimeOfDay] = TS_ABSOLUTE_WITH_YDOY;
     td_actions[main_ui_->actionViewTimeDisplayFormatTimeOfDay] = TS_ABSOLUTE;
     td_actions[main_ui_->actionViewTimeDisplayFormatSecondsSinceEpoch] = TS_EPOCH;
-    td_actions[main_ui_->actionViewTimeDisplayFormatSecondsSinceBeginningOfCapture] = TS_RELATIVE;
+    td_actions[main_ui_->actionViewTimeDisplayFormatSecondsSinceFirstCapturedPacket] = TS_RELATIVE;
     td_actions[main_ui_->actionViewTimeDisplayFormatSecondsSincePreviousCapturedPacket] = TS_DELTA;
     td_actions[main_ui_->actionViewTimeDisplayFormatSecondsSincePreviousDisplayedPacket] = TS_DELTA_DIS;
     td_actions[main_ui_->actionViewTimeDisplayFormatUTCDateYMDandTimeOfDay] = TS_UTC_WITH_YMD;
@@ -2282,7 +2254,7 @@ void WiresharkMainWindow::initConversationMenus()
         main_ui_->menuConversationFilter->addAction(conv_action);
 
         connect(this, SIGNAL(packetInfoChanged(_packet_info*)), conv_action, SLOT(setPacketInfo(_packet_info*)));
-        connect(conv_action, SIGNAL(triggered()), this, SLOT(applyConversationFilter()));
+        connect(conv_action, SIGNAL(triggered()), this, SLOT(applyConversationFilter()), Qt::QueuedConnection);
 
         // Packet list context menu items
         packet_list_->conversationMenu()->addAction(conv_action);
@@ -2634,6 +2606,7 @@ void WiresharkMainWindow::changeEvent(QEvent* event)
             main_ui_->retranslateUi(this);
             // make sure that the "Clear Menu" item is retranslated
             mainApp->emitAppSignal(WiresharkApplication::RecentCapturesChanged);
+            setTitlebarForCaptureFile();
             break;
         case QEvent::LocaleChange: {
             QString locale = QLocale::system().name();
@@ -3022,14 +2995,6 @@ void WiresharkMainWindow::setMwFileName(QString fileName)
 {
     mwFileName_ = fileName;
     return;
-}
-
-frame_data * WiresharkMainWindow::frameDataForRow(int row) const
-{
-    if (packet_list_)
-        return packet_list_->getFDataForRow(row);
-
-    return Q_NULLPTR;
 }
 
 // Finds rtp id for selected stream and adds it to stream_ids

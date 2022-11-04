@@ -20,14 +20,14 @@ import sys
 import argparse
 from pyclibrary import CParser
 
-argp = argparse.ArgumentParser()
-argp.add_argument("-o", "--outfile")
-argp.add_argument("infiles", nargs="*")
-args = argp.parse_args()
+def parse_files(infiles, outfile):
 
-parser = CParser(args.infiles)
+    print("Input: {}".format(infiles))
+    print("Output: '{}'".format(outfile))
 
-source = """\
+    parser = CParser(infiles)
+
+    source = """\
 /*
  * Wireshark - Network traffic analyzer
  * By Gerald Combs <gerald@wireshark.org>
@@ -35,9 +35,8 @@ source = """\
  *
  * SPDX-License-Identifier: GPL-2.0-or-later
  *
- * Generated automatically from %s.
- *
- * It can be re-created using "make gen-enums".
+ * Generated automatically from %s. It can be re-created by running
+ * "tools/make-enums.py" from the top source directory.
  *
  * It is fine to edit this file by hand. Particularly if a symbol
  * disappears from the API it can just be removed here. There is no
@@ -46,39 +45,49 @@ source = """\
  */
 """ % (os.path.basename(sys.argv[0]))
 
-for f in args.infiles:
-    source += '#include <{}>\n'.format(f)
+    for f in infiles:
+        source += '#include <{}>\n'.format(f)
 
-source += """
+    source += """
 #define ENUM(arg) { #arg, arg }
 
 static ws_enum_t all_enums[] = {
 """
 
-definitions = parser.defs['values']
-symbols = list(definitions.keys())
-symbols.sort()
+    definitions = parser.defs['values']
+    symbols = list(definitions.keys())
+    symbols.sort()
 
-for s in symbols:
-    if isinstance(definitions[s], int):
-        source += '    ENUM({}),\n'.format(s)
+    for s in symbols:
+        if isinstance(definitions[s], int):
+            source += '    ENUM({}),\n'.format(s)
 
-source += """\
+    source += """\
     { NULL, 0 },
 };
 """
 
-try:
-    if args.outfile:
-        fh = open(args.outfile, 'w')
-    else:
-        fh = sys.stdout
-except OSError:
-    sys.exit('Unable to write ' + args.outfile + '.\n')
+    try:
+        fh = open(outfile, 'w')
+    except OSError:
+        sys.exit('Unable to write ' + outfile + '.\n')
 
-fh.write(source)
-fh.close()
+    fh.write(source)
+    fh.close()
 
+epan_files = [
+    "epan/address.h",
+    "epan/ipproto.h",
+    "epan/proto.h",
+    "epan/ftypes/ftypes.h",
+    "epan/stat_groups.h",
+]
+parse_files(epan_files, "epan/introspection-enums.c")
+
+wtap_files = [
+    "wiretap/wtap.h",
+]
+parse_files(wtap_files, "wiretap/introspection-enums.c")
 
 #
 # Editor modelines  -  https://www.wireshark.org/tools/modelines.html

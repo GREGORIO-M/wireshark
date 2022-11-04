@@ -53,6 +53,11 @@ class case_syntax(unittest.TestCase):
         dfilter = r'http.host matches r"update\.microsoft\.c.."'
         checkDFilterCount(dfilter, 1)
 
+    def test_matches_5(self, checkDFilterSucceed):
+        # case insensitive
+        dfilter = 'http.request.method matches "^head"'
+        checkDFilterSucceed(dfilter)
+
     def test_equal_1(self, checkDFilterCount):
         dfilter = 'ip.addr == 10.0.0.5'
         checkDFilterCount(dfilter, 1)
@@ -107,8 +112,17 @@ class case_syntax(unittest.TestCase):
         checkDFilterCount(dfilter, 1)
 
     def test_bool_2(self, checkDFilterCount):
-        dfilter = "tcp.flags.push == true"
+        dfilter = "tcp.flags.push == True"
         checkDFilterCount(dfilter, 1)
+
+    def test_bool_2(self, checkDFilterCount):
+        dfilter = "tcp.flags.push == FALSE"
+        checkDFilterCount(dfilter, 0)
+
+    def test_misc_1(self, checkDFilterSucceed):
+        # Issue #18418
+        dfilter = "icmp and ((icmp.type > 0 and icmp.type < 8) or icmp.type > 8)"
+        checkDFilterSucceed(dfilter)
 
 @fixtures.uses_fixtures
 class case_equality(unittest.TestCase):
@@ -134,14 +148,6 @@ class case_equality(unittest.TestCase):
         dfilter = "udp.srcport == .udp.dstport"
         checkDFilterCount(dfilter, 2)
 
-    def test_literal_1(self, checkDFilterCount):
-        dfilter = "udp.port == :5070"
-        checkDFilterCount(dfilter, 3)
-
-    def test_literal_2(self, checkDFilterCount):
-        dfilter = "udp contains <ce:13>"
-        checkDFilterCount(dfilter, 1)
-
     def test_literal_3(self, checkDFilterCount):
         dfilter = "frame[0:10] contains :00:01:6c"
         checkDFilterCount(dfilter, 1)
@@ -158,20 +164,18 @@ class case_equality(unittest.TestCase):
         dfilter = "frame[0:10] contains :00-01-6c"
         checkDFilterCount(dfilter, 1)
 
-    def test_rhs_literal_bias_1(self, checkDFilterCount):
+    def test_rhs_bias_1(self, checkDFilterCount):
+        # Protocol "Fibre Channel" on the RHS
         dfilter = 'frame[37] == fc'
-        checkDFilterCount(dfilter, 1)
+        checkDFilterCount(dfilter, 0)
 
-    def test_rhs_literal_bias_2(self, checkDFilterCount):
+    def test_rhs_bias_2(self, checkDFilterCount):
+        # Byte 0xFC on the RHS
         dfilter = 'frame[37] == :fc'
         checkDFilterCount(dfilter, 1)
 
-    def test_rhs_literal_bias_3(self, checkDFilterCount):
-        dfilter = 'frame[37] == <fc>'
-        checkDFilterCount(dfilter, 1)
-
     def test_rhs_literal_bias_4(self, checkDFilterCount):
-        # This is Fibre Channel on the RHS
+        # Protocol "Fibre Channel" on the RHS
         dfilter = 'frame[37] == .fc'
         checkDFilterCount(dfilter, 0)
 
@@ -273,12 +277,17 @@ class case_arithmetic(unittest.TestCase):
 
 @fixtures.uses_fixtures
 class case_field_reference(unittest.TestCase):
-    trace_file = "dhcp.pcap"
+    trace_file = "ipoipoip.pcap"
 
     def test_ref_1(self, checkDFilterCountWithSelectedFrame):
         dfilter = 'frame.number < ${frame.number}'
-        # select frame 3, expect 2 frames out of 4.
-        checkDFilterCountWithSelectedFrame(dfilter, 2, 3)
+        # select frame 2, expect 1 frames out of 2.
+        checkDFilterCountWithSelectedFrame(dfilter, 1, 2)
+
+    def test_ref_2(self, checkDFilterCountWithSelectedFrame):
+        dfilter = 'ip.src#3 == ${ip.src#4}'
+        # select frame 1, expect 1 frames out of 2.
+        checkDFilterCountWithSelectedFrame(dfilter, 1, 1)
 
 @fixtures.uses_fixtures
 class case_field_reference(unittest.TestCase):
@@ -323,3 +332,24 @@ class case_quantifiers(unittest.TestCase):
     def test_all_1(self, checkDFilterCount):
         dfilter = 'all ip.addr > 1.1.1.1'
         checkDFilterCount(dfilter, 1)
+
+@fixtures.uses_fixtures
+class case_raw_modifier(unittest.TestCase):
+    trace_file = "s7comm-fuzz.pcapng.gz"
+
+    def test_regular(self, checkDFilterCount):
+        dfilter = 's7comm.blockinfo.blocktype == "0\uFFFD"'
+        checkDFilterCount(dfilter, 3)
+
+    def test_raw1(self, checkDFilterCount):
+        dfilter = '@s7comm.blockinfo.blocktype == 30:aa'
+        checkDFilterCount(dfilter, 2)
+
+    def test_raw2(self, checkDFilterCount):
+        dfilter = '@s7comm.blockinfo.blocktype == 30:fe'
+        checkDFilterCount(dfilter, 1)
+
+    def test_raw_ref(self, checkDFilterCountWithSelectedFrame):
+        dfilter = '@s7comm.blockinfo.blocktype == ${@s7comm.blockinfo.blocktype}'
+        # select frame 3, expect 2 frames out of 3.
+        checkDFilterCountWithSelectedFrame(dfilter, 2, 3)

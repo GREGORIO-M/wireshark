@@ -78,13 +78,14 @@ static dissector_handle_t signal_pdu_handle_lin             = NULL;
 static dissector_handle_t signal_pdu_handle_pdu_transport   = NULL;
 static dissector_handle_t signal_pdu_handle_ipdum           = NULL;
 
+static int hf_pdu_name                                      = -1;
 static int hf_payload_unparsed                              = -1;
 
 static gint ett_spdu_payload                                = -1;
 static gint ett_spdu_signal                                 = -1;
-static gboolean spdu_deserializer_activated                = TRUE;
-static gboolean spdu_deserializer_show_hidden              = FALSE;
-static gboolean spdu_deserializer_hide_raw_values          = TRUE;
+static gboolean spdu_deserializer_activated                 = TRUE;
+static gboolean spdu_deserializer_show_hidden               = FALSE;
+static gboolean spdu_deserializer_hide_raw_values           = TRUE;
 
 /*** expert info items ***/
 static expert_field ef_spdu_payload_truncated               = EI_INIT;
@@ -106,17 +107,24 @@ static GHashTable *data_spdu_ipdum_mappings                 = NULL;
 static GHashTable *data_spdu_dlt_mappings                   = NULL;
 static GHashTable *data_spdu_uds_mappings                   = NULL;
 
-static hf_register_info *dynamic_hf                         = NULL;
-static guint dynamic_hf_size                                = 0;
+static hf_register_info *dynamic_hf_base_raw                = NULL;
+static hf_register_info *dynamic_hf_agg_sum                 = NULL;
+static hf_register_info *dynamic_hf_agg_avg                 = NULL;
+static hf_register_info *dynamic_hf_agg_int                 = NULL;
+static guint dynamic_hf_number_of_entries                   = 0;
+static guint dynamic_hf_base_raw_number                     = 0;
+static guint dynamic_hf_agg_sum_number                      = 0;
+static guint dynamic_hf_agg_avg_number                      = 0;
+static guint dynamic_hf_agg_int_number                      = 0;
 
 #define HF_TYPE_BASE                                        0
 #define HF_TYPE_RAW                                         1
 #define HF_TYPE_AGG_SUM                                     2
 #define HF_TYPE_AGG_AVG                                     3
 #define HF_TYPE_AGG_INT                                     4
-/* HF_TYPE_COUNT must be the largest value + 1 */
-#define HF_TYPE_COUNT                                       (HF_TYPE_AGG_INT + 1)
 #define HF_TYPE_NONE                                        0xffff
+
+#define HF_TYPE_COUNT_BASE_RAW_TABLE                        2
 
 
 /***********************************************
@@ -810,11 +818,29 @@ free_spdu_signal_list_cb(void *r) {
         g_free(rec->filter_string);
         rec->filter_string = NULL;
     }
+    if (rec->data_type) {
+        g_free(rec->data_type);
+        rec->data_type = NULL;
+    }
+    if (rec->scaler) {
+        g_free(rec->scaler);
+        rec->scaler = NULL;
+    }
+    if (rec->offset) {
+        g_free(rec->offset);
+        rec->offset = NULL;
+    }
 }
 
 static void
-deregister_user_data(void)
-{
+deregister_user_data_hfarray(hf_register_info **hf_array, guint *number_of_entries) {
+    if (hf_array == NULL || number_of_entries == NULL) {
+        return;
+    }
+
+    guint dynamic_hf_size = *number_of_entries;
+    hf_register_info *dynamic_hf = *hf_array;
+
     if (dynamic_hf != NULL) {
         /* Unregister all fields */
         for (guint i = 0; i < dynamic_hf_size; i++) {
@@ -825,25 +851,31 @@ deregister_user_data(void)
                 g_free(dynamic_hf[i].p_id);
                 dynamic_hf[i].p_id = NULL;
 
-                /* workaround since the proto.c proto_free_field_strings seems to crash us... */
+                /* workaround since the proto.c proto_free_field_strings would double free this... */
                 dynamic_hf[i].hfinfo.strings = NULL;
             }
         }
 
         proto_add_deregistered_data(dynamic_hf);
-        dynamic_hf = NULL;
-        dynamic_hf_size = 0;
+        *hf_array = NULL;
+        *number_of_entries = 0;
     }
+}
+
+static void
+deregister_user_data(void)
+{
+    deregister_user_data_hfarray(&dynamic_hf_base_raw, &dynamic_hf_base_raw_number);
+    deregister_user_data_hfarray(&dynamic_hf_agg_sum, &dynamic_hf_agg_sum_number);
+    deregister_user_data_hfarray(&dynamic_hf_agg_avg, &dynamic_hf_agg_avg_number);
+    deregister_user_data_hfarray(&dynamic_hf_agg_int, &dynamic_hf_agg_int_number);
+    dynamic_hf_number_of_entries = 0;
 }
 
 static spdu_signal_value_name_t *get_signal_value_name_config(guint32 id, guint16 pos);
 
 static gint*
-create_hf_entry(guint i, guint32 id, guint32 pos, gchar *name, gchar *filter_string, spdu_dt_t data_type, gboolean scale_or_offset, guint32 hf_type) {
-    if (i >= dynamic_hf_size) {
-        return NULL;
-    }
-
+create_hf_entry(hf_register_info *dynamic_hf, guint i, guint32 id, guint32 pos, gchar *name, gchar *filter_string, spdu_dt_t data_type, gboolean scale_or_offset, guint32 hf_type) {
     val64_string *vs = NULL;
 
     gint *hf_id = g_new(gint, 1);
@@ -953,9 +985,19 @@ post_update_spdu_signal_list_read_in_data(spdu_signal_list_uat_t *data, guint da
     }
 
     if (data_num) {
-        /* lets create DYNAMIC_HFS_PER_ARRAY x hf_ids per entry (1x effective, 1x raw, 1x aggregated sum, ...) */
-        dynamic_hf = g_new0(hf_register_info, HF_TYPE_COUNT * data_num);
-        dynamic_hf_size = HF_TYPE_COUNT * data_num;
+        dynamic_hf_number_of_entries = data_num;
+        /* lets create the dynamic_hf array (base + raw) */
+        dynamic_hf_base_raw = g_new0(hf_register_info, 2 * dynamic_hf_number_of_entries);
+        dynamic_hf_base_raw_number = 2 * dynamic_hf_number_of_entries;
+
+        /* lets create the other dynamic_hf arrays */
+        dynamic_hf_agg_sum = g_new0(hf_register_info, dynamic_hf_number_of_entries);
+        dynamic_hf_agg_sum_number = 0;
+        dynamic_hf_agg_avg = g_new0(hf_register_info, dynamic_hf_number_of_entries);
+        dynamic_hf_agg_avg_number = 0;
+        dynamic_hf_agg_int = g_new0(hf_register_info, dynamic_hf_number_of_entries);
+        dynamic_hf_agg_int_number = 0;
+
 
         guint i = 0;
         for (i = 0; i < data_num; i++) {
@@ -1042,15 +1084,32 @@ post_update_spdu_signal_list_read_in_data(spdu_signal_list_uat_t *data, guint da
                 /* if one signal needs aggregation, the messages needs to know */
                 list->aggregation |= item->aggregate_sum | item->aggregate_avg | item->aggregate_int;
 
-                item->hf_id_effective = create_hf_entry(HF_TYPE_COUNT * i + HF_TYPE_BASE,    data[i].id, data[i].pos, data[i].name, data[i].filter_string, item->data_type, item->scale_or_offset, HF_TYPE_BASE);
-                item->hf_id_raw       = create_hf_entry(HF_TYPE_COUNT * i + HF_TYPE_RAW,     data[i].id, data[i].pos, data[i].name, data[i].filter_string, item->data_type, item->scale_or_offset, HF_TYPE_RAW);
-                item->hf_id_agg_sum   = create_hf_entry(HF_TYPE_COUNT * i + HF_TYPE_AGG_SUM, data[i].id, data[i].pos, data[i].name, data[i].filter_string, item->data_type, item->scale_or_offset, data[i].aggregate_sum ? HF_TYPE_AGG_SUM : HF_TYPE_NONE);
-                item->hf_id_agg_avg   = create_hf_entry(HF_TYPE_COUNT * i + HF_TYPE_AGG_AVG, data[i].id, data[i].pos, data[i].name, data[i].filter_string, item->data_type, item->scale_or_offset, data[i].aggregate_avg ? HF_TYPE_AGG_AVG : HF_TYPE_NONE);
-                item->hf_id_agg_int   = create_hf_entry(HF_TYPE_COUNT * i + HF_TYPE_AGG_INT, data[i].id, data[i].pos, data[i].name, data[i].filter_string, item->data_type, item->scale_or_offset, data[i].aggregate_int ? HF_TYPE_AGG_INT : HF_TYPE_NONE);
+                item->hf_id_effective = create_hf_entry(dynamic_hf_base_raw, HF_TYPE_COUNT_BASE_RAW_TABLE * i + HF_TYPE_BASE, data[i].id, data[i].pos, data[i].name, data[i].filter_string, item->data_type, item->scale_or_offset, HF_TYPE_BASE);
+                item->hf_id_raw       = create_hf_entry(dynamic_hf_base_raw, HF_TYPE_COUNT_BASE_RAW_TABLE * i + HF_TYPE_RAW, data[i].id, data[i].pos, data[i].name, data[i].filter_string, item->data_type, item->scale_or_offset, HF_TYPE_RAW);
+                if (data[i].aggregate_sum) {
+                    item->hf_id_agg_sum = create_hf_entry(dynamic_hf_agg_sum, dynamic_hf_agg_sum_number++, data[i].id, data[i].pos, data[i].name, data[i].filter_string, item->data_type, item->scale_or_offset, HF_TYPE_AGG_SUM);
+                }
+                if (data[i].aggregate_avg) {
+                    item->hf_id_agg_avg = create_hf_entry(dynamic_hf_agg_avg, dynamic_hf_agg_avg_number++, data[i].id, data[i].pos, data[i].name, data[i].filter_string, item->data_type, item->scale_or_offset, HF_TYPE_AGG_AVG);
+                }
+                if (data[i].aggregate_int) {
+                    item->hf_id_agg_int = create_hf_entry(dynamic_hf_agg_int, dynamic_hf_agg_int_number++, data[i].id, data[i].pos, data[i].name, data[i].filter_string, item->data_type, item->scale_or_offset, HF_TYPE_AGG_INT);
+                }
             }
         }
 
-        proto_register_field_array(proto_signal_pdu, dynamic_hf, dynamic_hf_size);
+        if (dynamic_hf_base_raw_number) {
+            proto_register_field_array(proto_signal_pdu, dynamic_hf_base_raw, dynamic_hf_base_raw_number);
+        }
+        if (dynamic_hf_agg_sum_number) {
+            proto_register_field_array(proto_signal_pdu, dynamic_hf_agg_sum, dynamic_hf_agg_sum_number);
+        }
+        if (dynamic_hf_agg_avg_number) {
+            proto_register_field_array(proto_signal_pdu, dynamic_hf_agg_avg, dynamic_hf_agg_avg_number);
+        }
+        if (dynamic_hf_agg_int_number) {
+            proto_register_field_array(proto_signal_pdu, dynamic_hf_agg_int, dynamic_hf_agg_int_number);
+        }
     }
 }
 
@@ -2294,6 +2353,9 @@ dissect_spdu_payload(tvbuff_t *tvb, packet_info *pinfo, proto_tree *root_tree, g
             col_append_fstr(pinfo->cinfo, COL_INFO, " (PDU: %s)", name);
             col_set_str(pinfo->cinfo, COL_PROTOCOL, SPDU_NAME);
         }
+        ti = proto_tree_add_string(tree, hf_pdu_name, tvb, offset, -1, name);
+        proto_item_set_generated(ti);
+        proto_item_set_hidden(ti);
     }
 
     spdu_signal_list_t *paramlist = get_parameter_config(id);
@@ -2493,6 +2555,9 @@ proto_register_signal_pdu(void) {
 
     /* data fields */
     static hf_register_info hf[] = {
+        { &hf_pdu_name,
+            { "Signal PDU Name", "signal_pdu.name",
+            FT_STRING, BASE_NONE, NULL, 0x0, NULL, HFILL }},
         { &hf_payload_unparsed,
             { "Unparsed Payload", "signal_pdu.payload.unparsed",
             FT_BYTES, BASE_NONE, NULL, 0x0, NULL, HFILL }},
@@ -2623,19 +2688,19 @@ proto_register_signal_pdu(void) {
 
     /* UATs */
     spdu_messages_uat = uat_new("Signal PDU Messages",
-        sizeof(generic_one_id_string_t),            /* record size           */
-        DATAFILE_SPDU_MESSAGES,                     /* filename              */
-        TRUE,                                       /* from profile          */
-        (void **)&spdu_message_ident,               /* data_ptr              */
-        &spdu_message_ident_num,                    /* numitems_ptr          */
-        UAT_AFFECTS_DISSECTION,                     /* but not fields        */
-        NULL,                                       /* help                  */
-        copy_generic_one_id_string_cb,              /* copy callback         */
-        update_generic_one_identifier_32bit,        /* update callback       */
-        free_generic_one_id_string_cb,              /* free callback         */
-        post_update_spdu_message_cb,                /* post update callback  */
-        NULL,                                       /* reset callback        */
-        spdu_messages_uat_fields                    /* UAT field definitions */
+        sizeof(generic_one_id_string_t),                   /* record size           */
+        DATAFILE_SPDU_MESSAGES,                            /* filename              */
+        TRUE,                                              /* from profile          */
+        (void **)&spdu_message_ident,                      /* data_ptr              */
+        &spdu_message_ident_num,                           /* numitems_ptr          */
+        UAT_AFFECTS_DISSECTION,                            /* but not fields        */
+        NULL,                                              /* help                  */
+        copy_generic_one_id_string_cb,                     /* copy callback         */
+        update_generic_one_identifier_32bit,               /* update callback       */
+        free_generic_one_id_string_cb,                     /* free callback         */
+        post_update_spdu_message_cb,                       /* post update callback  */
+        NULL,                                              /* reset callback        */
+        spdu_messages_uat_fields                           /* UAT field definitions */
     );
 
     prefs_register_uat_preference(spdu_module, "_spdu_signal_pdus", "Signal PDUs",
@@ -2660,17 +2725,19 @@ proto_register_signal_pdu(void) {
         &spdu_deserializer_hide_raw_values);
 
     spdu_parameter_value_names_uat = uat_new("Signal Value Names",
-        sizeof(spdu_signal_value_name_uat_t), DATAFILE_SPDU_VALUE_NAMES, TRUE,
-        (void **)&spdu_signal_value_names,
-        &spdu_parameter_value_names_num,
-        UAT_AFFECTS_DISSECTION,
-        NULL, /* help */
-        copy_spdu_signal_value_name_cb,
-        update_spdu_signal_value_name,
-        free_spdu_signal_value_name_cb,
-        post_update_spdu_signal_value_names_cb,
-        NULL, /* reset */
-        spdu_parameter_value_name_uat_fields
+        sizeof(spdu_signal_value_name_uat_t),              /* record size           */
+        DATAFILE_SPDU_VALUE_NAMES,                         /* filename              */
+        TRUE,                                              /* from profile          */
+        (void **)&spdu_signal_value_names,                 /* data_ptr              */
+        &spdu_parameter_value_names_num,                   /* numitems_ptr          */
+        UAT_AFFECTS_DISSECTION,                            /* but not fields        */
+        NULL,                                              /* help                  */
+        copy_spdu_signal_value_name_cb,                    /* copy callback         */
+        update_spdu_signal_value_name,                     /* update callback       */
+        free_spdu_signal_value_name_cb,                    /* free callback         */
+        post_update_spdu_signal_value_names_cb,            /* post update callback  */
+        NULL,                                              /* reset callback        */
+        spdu_parameter_value_name_uat_fields               /* UAT field definitions */
     );
 
     /* value names must be for signals since we need this data for the later */
@@ -2679,17 +2746,19 @@ proto_register_signal_pdu(void) {
 
 
     spdu_signal_list_uat = uat_new("Signal PDU Signal List",
-        sizeof(spdu_signal_list_uat_t), DATAFILE_SPDU_SIGNALS, TRUE,
-        (void **)&spdu_signal_list,
-        &spdu_signal_list_num,
+        sizeof(spdu_signal_list_uat_t),                    /* record size           */
+        DATAFILE_SPDU_SIGNALS,                             /* filename              */
+        TRUE,                                              /* from profile          */
+        (void **)&spdu_signal_list,                        /* data_ptr              */
+        &spdu_signal_list_num,                             /* numitems_ptr          */
         UAT_AFFECTS_DISSECTION | UAT_AFFECTS_FIELDS,
-        NULL, /* help */
-        copy_spdu_signal_list_cb,
-        update_spdu_signal_list,
-        free_spdu_signal_list_cb,
-        post_update_spdu_signal_list_cb,
-        reset_spdu_signal_list,
-        spdu_signal_list_uat_fields
+        NULL,                                              /* help                  */
+        copy_spdu_signal_list_cb,                          /* copy callback         */
+        update_spdu_signal_list,                           /* update callback       */
+        free_spdu_signal_list_cb,                          /* free callback         */
+        post_update_spdu_signal_list_cb,                   /* post update callback  */
+        reset_spdu_signal_list,                            /* reset callback        */
+        spdu_signal_list_uat_fields                        /* UAT field definitions */
     );
 
     static const char *spdu_signal_list_uat_defaults_[] = {
@@ -2706,17 +2775,19 @@ proto_register_signal_pdu(void) {
 
 
     spdu_someip_mapping_uat = uat_new("SOME/IP",
-        sizeof(spdu_someip_mapping_uat_t), DATAFILE_SPDU_SOMEIP_MAPPING, TRUE,
-        (void **)&spdu_someip_mapping,
-        &spdu_someip_mapping_num,
-        UAT_AFFECTS_DISSECTION,
-        NULL, /* help */
-        copy_spdu_someip_mapping_cb,
-        update_spdu_someip_mapping,
-        NULL,
-        post_update_spdu_someip_mapping_cb,
-        NULL, /* reset */
-        spdu_someip_mapping_uat_fields
+        sizeof(spdu_someip_mapping_uat_t),                 /* record size           */
+        DATAFILE_SPDU_SOMEIP_MAPPING,                      /* filename              */
+        TRUE,                                              /* from profile          */
+        (void **)&spdu_someip_mapping,                     /* data_ptr              */
+        &spdu_someip_mapping_num,                          /* numitems_ptr          */
+        UAT_AFFECTS_DISSECTION,                            /* but not fields        */
+        NULL,                                              /* help                  */
+        copy_spdu_someip_mapping_cb,                       /* copy callback         */
+        update_spdu_someip_mapping,                        /* update callback       */
+        NULL,                                              /* free callback         */
+        post_update_spdu_someip_mapping_cb,                /* post update callback  */
+        NULL,                                              /* reset callback        */
+        spdu_someip_mapping_uat_fields                     /* UAT field definitions */
     );
 
     prefs_register_uat_preference(spdu_module, "_spdu_someip_mapping", "SOME/IP Mappings",
@@ -2724,17 +2795,19 @@ proto_register_signal_pdu(void) {
 
 
     spdu_can_mapping_uat = uat_new("CAN",
-        sizeof(spdu_can_mapping_uat_t), DATAFILE_SPDU_CAN_MAPPING, TRUE,
-        (void **)&spdu_can_mapping,
-        &spdu_can_mapping_num,
-        UAT_AFFECTS_DISSECTION,
-        NULL, /* help */
-        copy_spdu_can_mapping_cb,
-        update_spdu_can_mapping,
-        NULL,
-        post_update_spdu_can_mapping_cb,
-        NULL, /* reset */
-        spdu_can_mapping_uat_fields
+        sizeof(spdu_can_mapping_uat_t),                    /* record size           */
+        DATAFILE_SPDU_CAN_MAPPING,                         /* filename              */
+        TRUE,                                              /* from profile          */
+        (void **)&spdu_can_mapping,                        /* data_ptr              */
+        &spdu_can_mapping_num,                             /* numitems_ptr          */
+        UAT_AFFECTS_DISSECTION,                            /* but not fields        */
+        NULL,                                              /* help                  */
+        copy_spdu_can_mapping_cb,                          /* copy callback         */
+        update_spdu_can_mapping,                           /* update callback       */
+        NULL,                                              /* free callback         */
+        post_update_spdu_can_mapping_cb,                   /* post update callback  */
+        NULL,                                              /* reset callback        */
+        spdu_can_mapping_uat_fields                        /* UAT field definitions */
     );
 
     prefs_register_uat_preference(spdu_module, "_spdu_can_mapping", "CAN Mappings",
@@ -2742,17 +2815,19 @@ proto_register_signal_pdu(void) {
 
 
     spdu_flexray_mapping_uat = uat_new("FlexRay",
-        sizeof(spdu_flexray_mapping_uat_t), DATAFILE_SPDU_FLEXRAY_MAPPING, TRUE,
-        (void **)&spdu_flexray_mapping,
-        &spdu_flexray_mapping_num,
-        UAT_AFFECTS_DISSECTION,
-        NULL, /* help */
-        copy_spdu_flexray_mapping_cb,
-        update_spdu_flexray_mapping,
-        NULL,
-        post_update_spdu_flexray_mapping_cb,
-        NULL, /* reset */
-        spdu_flexray_mapping_uat_fields
+        sizeof(spdu_flexray_mapping_uat_t),                /* record size           */
+        DATAFILE_SPDU_FLEXRAY_MAPPING,                     /* filename              */
+        TRUE,                                              /* from profile          */
+        (void **)&spdu_flexray_mapping,                    /* data_ptr              */
+        &spdu_flexray_mapping_num,                         /* numitems_ptr          */
+        UAT_AFFECTS_DISSECTION,                            /* but not fields        */
+        NULL,                                              /* help                  */
+        copy_spdu_flexray_mapping_cb,                      /* copy callback         */
+        update_spdu_flexray_mapping,                       /* update callback       */
+        NULL,                                              /* free callback         */
+        post_update_spdu_flexray_mapping_cb,               /* post update callback  */
+        NULL,                                              /* reset callback        */
+        spdu_flexray_mapping_uat_fields                    /* UAT field definitions */
     );
 
     prefs_register_uat_preference(spdu_module, "_spdu_flexray_mapping", "FlexRay Mappings",
@@ -2760,17 +2835,19 @@ proto_register_signal_pdu(void) {
 
 
     spdu_lin_mapping_uat = uat_new("LIN",
-        sizeof(spdu_lin_mapping_uat_t), DATAFILE_SPDU_LIN_MAPPING, TRUE,
-        (void **)&spdu_lin_mapping,
-        &spdu_lin_mapping_num,
-        UAT_AFFECTS_DISSECTION,
-        NULL, /* help */
-        copy_spdu_lin_mapping_cb,
-        update_spdu_lin_mapping,
-        NULL,
-        post_update_spdu_lin_mapping_cb,
-        NULL, /* reset */
-        spdu_lin_mapping_uat_fields
+        sizeof(spdu_lin_mapping_uat_t),                    /* record size           */
+        DATAFILE_SPDU_LIN_MAPPING,                         /* filename              */
+        TRUE,                                              /* from profile          */
+        (void **)&spdu_lin_mapping,                        /* data_ptr              */
+        &spdu_lin_mapping_num,                             /* numitems_ptr          */
+        UAT_AFFECTS_DISSECTION,                            /* but not fields        */
+        NULL,                                              /* help                  */
+        copy_spdu_lin_mapping_cb,                          /* copy callback         */
+        update_spdu_lin_mapping,                           /* update callback       */
+        NULL,                                              /* free callback         */
+        post_update_spdu_lin_mapping_cb,                   /* post update callback  */
+        NULL,                                              /* reset callback        */
+        spdu_lin_mapping_uat_fields                        /* UAT field definitions */
     );
 
     prefs_register_uat_preference(spdu_module, "_spdu_lin_mapping", "LIN Mappings",
@@ -2778,17 +2855,19 @@ proto_register_signal_pdu(void) {
 
 
     spdu_pdu_transport_mapping_uat = uat_new("PDU Transport",
-        sizeof(spdu_pdu_transport_mapping_uat_t), DATAFILE_SPDU_PDU_TRANSPORT_MAPPING, TRUE,
-        (void **)&spdu_pdu_transport_mapping,
-        &spdu_pdu_transport_mapping_num,
-        UAT_AFFECTS_DISSECTION,
-        NULL, /* help */
-        copy_spdu_pdu_transport_mapping_cb,
-        update_spdu_pdu_transport_mapping,
-        NULL,
-        post_update_spdu_pdu_transport_mapping_cb,
-        NULL, /* reset */
-        spdu_pdu_transport_mapping_uat_fields
+        sizeof(spdu_pdu_transport_mapping_uat_t),          /* record size           */
+        DATAFILE_SPDU_PDU_TRANSPORT_MAPPING,               /* filename              */
+        TRUE,                                              /* from profile          */
+        (void **)&spdu_pdu_transport_mapping,              /* data_ptr              */
+        &spdu_pdu_transport_mapping_num,                   /* numitems_ptr          */
+        UAT_AFFECTS_DISSECTION,                            /* but not fields        */
+        NULL,                                              /* help                  */
+        copy_spdu_pdu_transport_mapping_cb,                /* copy callback         */
+        update_spdu_pdu_transport_mapping,                 /* update callback       */
+        NULL,                                              /* free callback         */
+        post_update_spdu_pdu_transport_mapping_cb,         /* post update callback  */
+        NULL,                                              /* reset callback        */
+        spdu_pdu_transport_mapping_uat_fields              /* UAT field definitions */
     );
 
     prefs_register_uat_preference(spdu_module, "_spdu_pdu_transport_mapping", "PDU Transport Mappings",
@@ -2796,17 +2875,19 @@ proto_register_signal_pdu(void) {
 
 
     spdu_ipdum_mapping_uat = uat_new("AUTOSAR I-PduM",
-        sizeof(spdu_ipdum_mapping_uat_t), DATAFILE_SPDU_IPDUM_MAPPING, TRUE,
-        (void **)&spdu_ipdum_mapping,
-        &spdu_ipdum_mapping_num,
-        UAT_AFFECTS_DISSECTION,
-        NULL, /* help */
-        copy_spdu_ipdum_mapping_cb,
-        update_spdu_ipdum_mapping,
-        NULL,
-        post_update_spdu_ipdum_mapping_cb,
-        NULL, /* reset */
-        spdu_ipdum_mapping_uat_fields
+        sizeof(spdu_ipdum_mapping_uat_t),                  /* record size           */
+        DATAFILE_SPDU_IPDUM_MAPPING,                       /* filename              */
+        TRUE,                                              /* from profile          */
+        (void **)&spdu_ipdum_mapping,                      /* data_ptr              */
+        &spdu_ipdum_mapping_num,                           /* numitems_ptr          */
+        UAT_AFFECTS_DISSECTION,                            /* but not fields        */
+        NULL,                                              /* help                  */
+        copy_spdu_ipdum_mapping_cb,                        /* copy callback         */
+        update_spdu_ipdum_mapping,                         /* update callback       */
+        NULL,                                              /* free callback         */
+        post_update_spdu_ipdum_mapping_cb,                 /* post update callback  */
+        NULL,                                              /* reset callback        */
+        spdu_ipdum_mapping_uat_fields                      /* UAT field definitions */
     );
 
     prefs_register_uat_preference(spdu_module, "_spdu_ipdum_mapping", "IPduM Mappings",
@@ -2814,17 +2895,19 @@ proto_register_signal_pdu(void) {
 
 
     spdu_dlt_mapping_uat = uat_new("DLT",
-        sizeof(spdu_dlt_mapping_uat_t), DATAFILE_SPDU_DLT_MAPPING, TRUE,
-        (void **)&spdu_dlt_mapping,
-        &spdu_dlt_mapping_num,
-        UAT_AFFECTS_DISSECTION,
-        NULL, /* help */
-        copy_spdu_dlt_mapping_cb,
-        update_spdu_dlt_mapping,
-        NULL,
-        post_update_spdu_dlt_mapping_cb,
-        NULL, /* reset */
-        spdu_dlt_mapping_uat_fields
+        sizeof(spdu_dlt_mapping_uat_t),                    /* record size           */
+        DATAFILE_SPDU_DLT_MAPPING,                         /* filename              */
+        TRUE,                                              /* from profile          */
+        (void **)&spdu_dlt_mapping,                        /* data_ptr              */
+        &spdu_dlt_mapping_num,                             /* numitems_ptr          */
+        UAT_AFFECTS_DISSECTION,                            /* but not fields        */
+        NULL,                                              /* help                  */
+        copy_spdu_dlt_mapping_cb,                          /* copy callback         */
+        update_spdu_dlt_mapping,                           /* update callback       */
+        NULL,                                              /* free callback         */
+        post_update_spdu_dlt_mapping_cb,                   /* post update callback  */
+        NULL,                                              /* reset callback        */
+        spdu_dlt_mapping_uat_fields                        /* UAT field definitions */
     );
 
     prefs_register_uat_preference(spdu_module, "_spdu_dlt_mapping", "DLT Mappings",
@@ -2832,17 +2915,19 @@ proto_register_signal_pdu(void) {
 
 
     spdu_uds_mapping_uat = uat_new("UDS",
-        sizeof(spdu_uds_mapping_uat_t), DATAFILE_SPDU_UDS_MAPPING, TRUE,
-        (void **)&spdu_uds_mapping,
-        &spdu_uds_mapping_num,
-        UAT_AFFECTS_DISSECTION,
-        NULL, /* help */
-        copy_spdu_uds_mapping_cb,
-        update_spdu_uds_mapping,
-        NULL,
-        post_update_spdu_uds_mapping_cb,
-        NULL, /* reset */
-        spdu_uds_mapping_uat_fields
+        sizeof(spdu_uds_mapping_uat_t),                    /* record size           */
+        DATAFILE_SPDU_UDS_MAPPING,                         /* filename              */
+        TRUE,                                              /* from profile          */
+        (void **)&spdu_uds_mapping,                        /* data_ptr              */
+        &spdu_uds_mapping_num,                             /* numitems_ptr          */
+        UAT_AFFECTS_DISSECTION,                            /* but not fields        */
+        NULL,                                              /* help                  */
+        copy_spdu_uds_mapping_cb,                          /* copy callback         */
+        update_spdu_uds_mapping,                           /* update callback       */
+        NULL,                                              /* free callback         */
+        post_update_spdu_uds_mapping_cb,                   /* post update callback  */
+        NULL,                                              /* reset callback        */
+        spdu_uds_mapping_uat_fields                        /* UAT field definitions */
     );
 
     prefs_register_uat_preference(spdu_module, "_spdu_uds_mapping", "UDS Mappings",

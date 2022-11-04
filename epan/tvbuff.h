@@ -268,8 +268,14 @@ WS_DLL_PUBLIC guint tvb_ensure_reported_length_remaining(const tvbuff_t *tvb,
    dissector's payload may include padding as well as the packet for
    this protocol.
 
-   Also adjusts the data length. */
+   Also adjusts the available and contained length. */
 WS_DLL_PUBLIC void tvb_set_reported_length(tvbuff_t *tvb, const guint);
+
+/* Repair a tvbuff where the captured length is greater than the
+ * reported length; such a tvbuff makes no sense, as it's impossible
+ * to capture more data than is in the packet.
+ */
+WS_DLL_PUBLIC void tvb_fix_reported_length(tvbuff_t *tvb);
 
 WS_DLL_PUBLIC guint tvb_offset_from_real_beginning(const tvbuff_t *tvb);
 
@@ -765,33 +771,28 @@ WS_DLL_PUBLIC guint8 *tvb_get_stringz_enc(wmem_allocator_t *scope,
  * of the string, in whatever encoding they happen to be in, and, if
  * the string is not valid in that encoding, with invalid octet sequences
  * as they are in the packet.
+ *
+ * This function is deprecated because it does no validation of the string
+ * encoding. Do not use in new code. Prefer other APIs such as:
+ * 	tvb_get_stringz_enc()
+ * 	proto_tree_add_item_ret_string_and_length()
+ * 	tvb_strsize() and validate the pointed to memory region manually.
  */
-WS_DLL_PUBLIC const guint8 *tvb_get_const_stringz(tvbuff_t *tvb,
+WS_DLL_PUBLIC
+WS_DEPRECATED_X("Use APIs that return a valid UTF-8 string instead")
+const guint8 *tvb_get_const_stringz(tvbuff_t *tvb,
     const gint offset, gint *lengthp);
 
-/** Looks for a stringz (NUL-terminated string) in tvbuff and copies
+/** Looks for a NUL byte in tvbuff and copies
  * no more than bufsize number of bytes, including terminating NUL, to buffer.
- * Returns length of string (not including terminating NUL), or -1 if the
- * string was truncated in the buffer due to not having reached the terminating
- * NUL.  In this way, it acts like snprintf().
+ * Returns number of bytes copied (not including terminating NUL).
  *
  * When processing a packet where the remaining number of bytes is less
  * than bufsize, an exception is not thrown if the end of the packet
- * is reached before the NUL is found. If no NUL is found before reaching
- * the end of the short packet, -1 is still returned, and the string
- * is truncated with a NUL, albeit not at buffer[bufsize - 1], but
- * at the correct spot, terminating the string.
+ * is reached before the NUL is found. The byte buffer is guaranteed to
+ * have a terminating NUL.
  */
-WS_DLL_PUBLIC gint tvb_get_nstringz(tvbuff_t *tvb, const gint offset,
-    const guint bufsize, guint8 *buffer);
-
-/** Like tvb_get_nstringz(), but never returns -1. The string is guaranteed to
- * have a terminating NUL. If the string was truncated when copied into buffer,
- * a NUL is placed at the end of buffer to terminate it.
- *
- * bufsize MUST be greater than 0.
- */
-WS_DLL_PUBLIC gint tvb_get_nstringz0(tvbuff_t *tvb, const gint offset,
+WS_DLL_PUBLIC gint tvb_get_raw_bytes_as_stringz(tvbuff_t *tvb, const gint offset,
     const guint bufsize, guint8 *buffer);
 
 /*
@@ -819,6 +820,13 @@ WS_DLL_PUBLIC gboolean tvb_ascii_isprint(tvbuff_t *tvb, const gint offset,
 * @see isprint_utf8_string()
 */
 WS_DLL_PUBLIC gboolean tvb_utf_8_isprint(tvbuff_t *tvb, const gint offset,
+	const gint length);
+
+/** Iterates over the provided portion of the tvb checking that each byte
+* is an ascii digit.
+* Returns TRUE if all bytes are digits, FALSE otherwise
+*/
+WS_DLL_PUBLIC gboolean tvb_ascii_isdigit(tvbuff_t *tvb, const gint offset,
 	const gint length);
 
 /**
@@ -1137,7 +1145,7 @@ extern tvbuff_t* base64uri_tvb_to_new_tvb(tvbuff_t* parent, int offset, int leng
  * @param offset The offset in tvb from which we begin trying to extract integer.
  * @param maxlen The maximum distance from offset that we may try to extract integer
  * @param value  if parsing succeeds, parsed varint will store here.
- * @param encoding The ENC_* that defines the format (e.g., ENC_VARINT_PROTOBUF, ENC_VARINT_QUIC, ENC_VARINT_ZIGZAG)
+ * @param encoding The ENC_* that defines the format (e.g., ENC_VARINT_PROTOBUF, ENC_VARINT_QUIC, ENC_VARINT_ZIGZAG, ENC_VARINT_SDNV)
  * @return   the length of this varint in tvb. 0 means parsing failed.
  */
 WS_DLL_PUBLIC guint tvb_get_varint(tvbuff_t *tvb, guint offset, guint maxlen, guint64 *value, const guint encoding);

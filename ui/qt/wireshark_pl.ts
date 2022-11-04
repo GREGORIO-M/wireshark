@@ -28,8 +28,8 @@
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <source>Copy To Clipboard</source>
-        <translation type="unfinished">Skopiuj do schowka</translation>
+        <source>Copy to Clipboard</source>
+        <translation type="unfinished"></translation>
     </message>
     <message>
         <source>Authors</source>
@@ -1741,6 +1741,14 @@ For example, use 1 hour to have a new file created every hour on the hour.</sour
         <translation>Wystąpienia:</translation>
     </message>
     <message>
+        <source>Resolve Names:</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>&lt;html&gt;&lt;head/&gt;&lt;p&gt;Show human-readable strings instead of raw values for fields. Only applicable to custom columns with fields that have value strings.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
         <source>Missing fields.</source>
         <translation>Pominięte pola.</translation>
     </message>
@@ -1773,6 +1781,14 @@ For example, use 1 hour to have a new file created every hour on the hour.</sour
     </message>
     <message>
         <source>Field Occurrence</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Resolved</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>&lt;html&gt;Show human-readable strings instead of raw values for fields. Only applicable to custom columns with fields that have value strings.&lt;/html&gt;</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
@@ -1819,6 +1835,81 @@ For example, use 1 hour to have a new file created every hour on the hour.</sour
     </message>
 </context>
 <context>
+    <name>ConversationDataModel</name>
+    <message>
+        <source>Address A</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Port A</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Address B</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Port B</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Packets</source>
+        <translation type="unfinished">Pakiety</translation>
+    </message>
+    <message>
+        <source>Bytes</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Stream ID</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Packets A </source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Bytes A </source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Packets B </source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Bytes B </source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Abs Start</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Rel Start</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Duration</source>
+        <translation type="unfinished">Czas trwania</translation>
+    </message>
+    <message>
+        <source>Bits/s A </source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Bits/s B </source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Total Packets</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Percent Filtered</source>
+        <translation type="unfinished"></translation>
+    </message>
+</context>
+<context>
     <name>ConversationDialog</name>
     <message>
         <source>Follow Stream…</source>
@@ -1846,77 +1937,6 @@ For example, use 1 hour to have a new file created every hour on the hour.</sour
     <message>
         <source>Conversation Hash Tables</source>
         <translation>Tablice mieszające konwersacji</translation>
-    </message>
-</context>
-<context>
-    <name>ConversationTreeWidget</name>
-    <message>
-        <source>Connection A</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <source>Connection B</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <source>Resize all columns to content</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <source>Address A</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <source>Port A</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <source>Address B</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <source>Port B</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <source>Packets</source>
-        <translation type="unfinished">Pakiety</translation>
-    </message>
-    <message>
-        <source>Bytes</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <source>Packets A </source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <source>Bytes A </source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <source>Packets B </source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <source>Rel Start</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <source>Duration</source>
-        <translation type="unfinished">Czas trwania</translation>
-    </message>
-    <message>
-        <source>Bits/s A </source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <source>Bits/s B </source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <source>Abs Start</source>
-        <translation type="unfinished"></translation>
     </message>
 </context>
 <context>
@@ -2009,6 +2029,14 @@ For example, use 1 hour to have a new file created every hour on the hour.</sour
     <message>
         <source>Copy packet bytes as a stream of hex.</source>
         <translation>Kopiuj bajty pakietu jako strumień Hex.</translation>
+    </message>
+    <message>
+        <source>…as a Base64 String</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Copy packet bytes as a base64 encoded string.</source>
+        <translation type="unfinished"></translation>
     </message>
     <message>
         <source>…as Raw Binary</source>
@@ -2172,7 +2200,7 @@ For example, use 1 hour to have a new file created every hour on the hour.</sour
     </message>
     <message>
         <source>Invalid filter: </source>
-        <translation>Błędny filtr: </translation>
+        <translation type="unfinished">Błędny filtr: </translation>
     </message>
     <message>
         <source>Save this filter</source>
@@ -2224,6 +2252,22 @@ For example, use 1 hour to have a new file created every hour on the hour.</sour
     <message>
         <source>Relation</source>
         <translation>Relacja</translation>
+    </message>
+    <message>
+        <source>By default order comparisons and contains/matches/in relations are true if any value matches. The quantifier &quot;all&quot; can be used to apply the test to all values in a frame.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Quantifier</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Any</source>
+        <translation type="unfinished">Każdy</translation>
+    </message>
+    <message>
+        <source>All</source>
+        <translation type="unfinished"></translation>
     </message>
     <message>
         <source>Match against this value.</source>
@@ -2296,7 +2340,7 @@ For example, use 1 hour to have a new file created every hour on the hour.</sour
         <translation type="unfinished">String</translation>
     </message>
     <message>
-        <source>Dissector</source>
+        <source>Dissector Description</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
@@ -2399,58 +2443,7 @@ For example, use 1 hour to have a new file created every hour on the hour.</sour
     </message>
 </context>
 <context>
-    <name>EndpointDialog</name>
-    <message>
-        <source>Map</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <source>Draw IPv4 or IPv6 endpoints on a map.</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <source>Open in browser</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <source>Save As…</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <source>Map file error</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <source>Could not open base file %1 for reading: %2</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <source>No endpoints available to map</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <source>Unable to create temporary file</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <source>Save Endpoints Map</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <source>Failed to save map file %1.</source>
-        <translation type="unfinished"></translation>
-    </message>
-</context>
-<context>
-    <name>EndpointTreeWidget</name>
-    <message>
-        <source>Connection</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <source>Resize all columns to content</source>
-        <translation type="unfinished"></translation>
-    </message>
+    <name>EndpointDataModel</name>
     <message>
         <source>Address</source>
         <translation type="unfinished">Adres</translation>
@@ -2497,6 +2490,45 @@ For example, use 1 hour to have a new file created every hour on the hour.</sour
     </message>
     <message>
         <source>AS Organization</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Total Packets</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Percent Filtered</source>
+        <translation type="unfinished"></translation>
+    </message>
+</context>
+<context>
+    <name>EndpointDialog</name>
+    <message>
+        <source>Map</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Draw IPv4 or IPv6 endpoints on a map.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Open in browser</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Save As…</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Map file error</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Save Endpoints Map</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Failed to save map file %1.</source>
         <translation type="unfinished"></translation>
     </message>
 </context>
@@ -3392,24 +3424,12 @@ For example, use 1 hour to have a new file created every hour on the hour.</sour
         </translation>
     </message>
     <message numerus="yes">
-        <source>Total number of QUIC connections: %Ln</source>
-        <translation type="unfinished">
-            <numerusform></numerusform>
-            <numerusform></numerusform>
-            <numerusform></numerusform>
-        </translation>
-    </message>
-    <message numerus="yes">
         <source>Max QUIC Stream ID for the selected connection: %Ln</source>
         <translation type="unfinished">
             <numerusform></numerusform>
             <numerusform></numerusform>
             <numerusform></numerusform>
         </translation>
-    </message>
-    <message>
-        <source>No streams</source>
-        <translation type="unfinished"></translation>
     </message>
     <message>
         <source>Entire conversation (%1)</source>
@@ -6334,11 +6354,13 @@ For example, use 1 hour to have a new file created every hour on the hour.</sour
         <translation type="unfinished">Importuj</translation>
     </message>
     <message>
-        <source>from zip file</source>
+        <source>From Zip File...</source>
+        <oldsource>from zip file</oldsource>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <source>from directory</source>
+        <source>From Directory...</source>
+        <oldsource>from directory</oldsource>
         <translation type="unfinished"></translation>
     </message>
     <message>
@@ -6435,11 +6457,13 @@ For example, use 1 hour to have a new file created every hour on the hour.</sour
         <translation>Brak pakietów</translation>
     </message>
     <message>
-        <source>selected personal profile</source>
+        <source>Selected Personal Profile...</source>
+        <oldsource>selected personal profile</oldsource>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <source>all personal profiles</source>
+        <source>All Personal Profiles...</source>
+        <oldsource>all personal profiles</oldsource>
         <translation type="unfinished"></translation>
     </message>
     <message>
@@ -7385,7 +7409,8 @@ For example, use 1 hour to have a new file created every hour on the hour.</sour
         <translation type="unfinished"></translation>
     </message>
     <message numerus="yes">
-        <source>%Ln selected personal profile(s)</source>
+        <source>%Ln Selected Personal Profile(s)...</source>
+        <oldsource>%Ln selected personal profile(s)</oldsource>
         <translation type="unfinished">
             <numerusform></numerusform>
             <numerusform></numerusform>
@@ -7429,15 +7454,18 @@ For example, use 1 hour to have a new file created every hour on the hour.</sour
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <source>from zip file</source>
+        <source>From Zip File...</source>
+        <oldsource>from zip file</oldsource>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <source>from directory</source>
+        <source>From Directory...</source>
+        <oldsource>from directory</oldsource>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <source>all personal profiles</source>
+        <source>All Personal Profiles...</source>
+        <oldsource>all personal profiles</oldsource>
         <translation type="unfinished"></translation>
     </message>
     <message>
@@ -10933,6 +10961,10 @@ For example, use 1 hour to have a new file created every hour on the hour.</sour
         <translation type="unfinished"></translation>
     </message>
     <message>
+        <source>Percent-Encoding</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
         <source>Quoted-Printable</source>
         <translation>Quoted-Printable</translation>
     </message>
@@ -10967,10 +10999,6 @@ For example, use 1 hour to have a new file created every hour on the hour.</sour
     <message>
         <source>Image</source>
         <translation>Obraz</translation>
-    </message>
-    <message>
-        <source>Json</source>
-        <translation type="unfinished"></translation>
     </message>
     <message>
         <source>Raw</source>
@@ -11011,6 +11039,10 @@ For example, use 1 hour to have a new file created every hour on the hour.</sour
             <numerusform>Wyświetl %Ln bajtów.</numerusform>
             <numerusform>Wyświetl %Ln bajtów.</numerusform>
         </translation>
+    </message>
+    <message>
+        <source>JSON</source>
+        <translation type="unfinished"></translation>
     </message>
     <message>
         <source>Regex Find:</source>
@@ -11150,6 +11182,10 @@ For example, use 1 hour to have a new file created every hour on the hour.</sour
 </context>
 <context>
     <name>SyntaxLineEdit</name>
+    <message>
+        <source>Invalid filter: %1</source>
+        <translation type="unfinished"></translation>
+    </message>
     <message>
         <source>&quot;%1&quot; is deprecated in favour of &quot;%2&quot;. See Help section 6.4.8 for details.</source>
         <translation type="unfinished"></translation>
@@ -11861,6 +11897,25 @@ For example, use 1 hour to have a new file created every hour on the hour.</sour
     </message>
 </context>
 <context>
+    <name>TrafficTab</name>
+    <message>
+        <source>Map file error</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Could not open base file %1 for reading: %2</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>No endpoints available to map</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Unable to create temporary file</source>
+        <translation type="unfinished"></translation>
+    </message>
+</context>
+<context>
     <name>TrafficTableDialog</name>
     <message>
         <source>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Show resolved addresses and port names rather than plain values. The corresponding name resolution preference must be enabled.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</source>
@@ -11879,44 +11934,113 @@ For example, use 1 hour to have a new file created every hour on the hour.</sour
         <translation>Ogranicz do filtru</translation>
     </message>
     <message>
+        <source>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Only show types matching the filter value&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Filter list for specific type</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
         <source>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Show absolute times in the start time column.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</source>
         <translation>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Pokazuj czas absolutny w kolumnie Start Czasu.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</translation>
+    </message>
+    <message>
+        <source>GroupBox</source>
+        <translation type="unfinished">Element grupujący</translation>
     </message>
     <message>
         <source>Absolute start time</source>
         <translation>Absolutny czas startu</translation>
     </message>
     <message>
-        <source>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Add and remove conversation types.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</source>
-        <translation>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Dodaj lub usuń typ konwersacji.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</translation>
-    </message>
-    <message>
-        <source>%1 Types</source>
-        <translation>%1 Typy</translation>
-    </message>
-    <message>
         <source>Copy</source>
         <translation>Kopiuj</translation>
     </message>
     <message>
+        <source>Unknown</source>
+        <translation>Nieznany</translation>
+    </message>
+</context>
+<context>
+    <name>TrafficTree</name>
+    <message>
+        <source>Resize all columns to content</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Filter on stream id</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Copy %1 table</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
         <source>as CSV</source>
-        <translation>jako CSV</translation>
+        <translation type="unfinished">jako CSV</translation>
     </message>
     <message>
         <source>Copy all values of this page to the clipboard in CSV (Comma Separated Values) format.</source>
-        <translation>Kopiuj wszystkie wartości z tej strony w CSV do schowka.</translation>
+        <translation type="unfinished"></translation>
     </message>
     <message>
         <source>as YAML</source>
-        <translation>jako YAML</translation>
+        <translation type="unfinished">jako YAML</translation>
     </message>
     <message>
         <source>Copy all values of this page to the clipboard in the YAML data serialization format.</source>
-        <translation>Kopiuj wszystkie wartości z tej strony w formacie serializacji YAML do schowka.</translation>
+        <translation type="unfinished"></translation>
     </message>
     <message>
-        <source>Unknown</source>
-        <translation>Nieznany</translation>
+        <source>as JSON</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Copy all values of this page to the clipboard in the JSON data serialization format.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Save data as raw</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Disable data formatting for export/clipboard and save as raw data</source>
+        <translation type="unfinished"></translation>
+    </message>
+</context>
+<context>
+    <name>TrafficTreeHeaderView</name>
+    <message>
+        <source>Less than</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Greater than</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Equal</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Columns to display</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Filter %1 by</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Enter filter value</source>
+        <translation type="unfinished"></translation>
+    </message>
+</context>
+<context>
+    <name>TrafficTypesModel</name>
+    <message>
+        <source>Protocol</source>
+        <translation type="unfinished">Protokół</translation>
     </message>
 </context>
 <context>
@@ -12264,6 +12388,14 @@ a:hover {
 &lt;td style=&quot;padding-left: 8px; padding-right: 8px;&quot;&gt;·&lt;/td&gt;
 
 &lt;th&gt;&lt;a href=&quot;https://www.wireshark.org/lists/&quot;&gt;Mailing Lists&lt;/a&gt;&lt;/th&gt;
+
+&lt;td style=&quot;padding-left: 8px; padding-right: 8px;&quot;&gt;·&lt;/td&gt;
+
+&lt;th&gt;&lt;a href=&quot;https://sharkfest.wireshark.org/&quot;&gt;SharkFest&lt;/a&gt;&lt;/th&gt;
+
+&lt;td style=&quot;padding-left: 8px; padding-right: 8px;&quot;&gt;·&lt;/td&gt;
+
+&lt;th&gt;&lt;a href=&quot;https://discord.com/invite/ts9GZCjGj5&quot;&gt;Wireshark Discord&lt;/a&gt;&lt;/th&gt;
 
 &lt;/tr&gt;&lt;/table&gt;
 &lt;/body&gt;&lt;/html&gt;</source>
@@ -12834,6 +12966,10 @@ a:hover {
         <translation type="unfinished"></translation>
     </message>
     <message>
+        <source>&amp;DTN</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
         <source>Osmux</source>
         <translation type="unfinished"></translation>
     </message>
@@ -13313,6 +13449,14 @@ a:hover {
         <translation type="unfinished"></translation>
     </message>
     <message>
+        <source>&amp;LTP</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>LTP segment and block statistics</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
         <source>&amp;ISUP Messages</source>
         <translation>Komunikaty &amp;ISUP</translation>
     </message>
@@ -13458,6 +13602,10 @@ a:hover {
     </message>
     <message>
         <source>Reset appearance layout to default size</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Seconds Since First Captured Packet</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
@@ -13783,10 +13931,6 @@ a:hover {
     <message>
         <source>Show packet times as the seconds since the UNIX / POSIX epoch (1970-01-01).</source>
         <translation>Jako czas pakietów pokazuj sekundy od ery UNIX/POSIX (1970-01-01).</translation>
-    </message>
-    <message>
-        <source>Seconds Since Beginning of Capture</source>
-        <translation>Sekundy od początku przechwytywania</translation>
     </message>
     <message>
         <source>Seconds Since Previous Captured Packet</source>

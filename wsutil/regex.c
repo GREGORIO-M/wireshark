@@ -11,6 +11,7 @@
 #include "regex.h"
 
 #include <wsutil/ws_return.h>
+#include <wsutil/str_util.h>
 #include <pcre2.h>
 
 
@@ -43,16 +44,28 @@ get_error_msg(int errorcode)
 
 
 static pcre2_code *
-compile_pcre2(const char *patt, char **errmsg)
+compile_pcre2(const char *patt, ssize_t size, char **errmsg, unsigned flags)
 {
     pcre2_code *code;
     int errorcode;
+    PCRE2_SIZE length;
     PCRE2_SIZE erroroffset;
+    uint32_t options = 0;
+
+    if (size < 0)
+        length = PCRE2_ZERO_TERMINATED;
+    else
+        length = (PCRE2_SIZE)size;
+
+    if (flags & WS_REGEX_NEVER_UTF)
+        options |= PCRE2_NEVER_UTF;
+    if (flags & WS_REGEX_CASELESS)
+        options |= PCRE2_CASELESS;
 
     /* By default UTF-8 is off. */
     code = pcre2_compile_8((PCRE2_SPTR)patt,
-                PCRE2_ZERO_TERMINATED,
-                PCRE2_NEVER_UTF,
+                length,
+                options,
                 &errorcode,
                 &erroroffset,
                 NULL);
@@ -67,30 +80,39 @@ compile_pcre2(const char *patt, char **errmsg)
 
 
 ws_regex_t *
-ws_regex_compile(const char *patt, char **errmsg)
+ws_regex_compile_ex(const char *patt, ssize_t size, char **errmsg, unsigned flags)
 {
     ws_return_val_if_null(patt, NULL);
 
-    pcre2_code *code = compile_pcre2(patt, errmsg);
+    pcre2_code *code = compile_pcre2(patt, size, errmsg, flags);
     if (code == NULL)
         return NULL;
 
     ws_regex_t *re = g_new(ws_regex_t, 1);
     re->code = code;
-    re->pattern = g_strdup(patt);
+    re->pattern = ws_escape_string_len(NULL, patt, size, false);
     return re;
 }
 
 
-static bool
-match_pcre2(pcre2_code *code, PCRE2_SPTR subject, PCRE2_SIZE length)
+ws_regex_t *
+ws_regex_compile(const char *patt, char **errmsg)
 {
-    pcre2_match_data *match_data;
+    return ws_regex_compile_ex(patt, -1, errmsg, 0);
+}
+
+
+static bool
+match_pcre2(pcre2_code *code, const char *subject, ssize_t subj_length,
+                pcre2_match_data *match_data)
+{
+    PCRE2_SIZE length;
     int rc;
 
-    /* We don't use the matched substring but pcre2_match requires
-     * at least one pair of offsets. */
-    match_data = pcre2_match_data_create(1, NULL);
+    if (subj_length < 0)
+        length = PCRE2_ZERO_TERMINATED;
+    else
+        length = (PCRE2_SIZE)subj_length;
 
     rc = pcre2_match(code,
                     subject,
@@ -99,8 +121,6 @@ match_pcre2(pcre2_code *code, PCRE2_SPTR subject, PCRE2_SIZE length)
                     0,          /* default options */
                     match_data,
                     NULL);
-
-    pcre2_match_data_free(match_data);
 
     if (rc < 0) {
         /* No match */
@@ -122,21 +142,49 @@ match_pcre2(pcre2_code *code, PCRE2_SPTR subject, PCRE2_SIZE length)
 bool
 ws_regex_matches(const ws_regex_t *re, const char *subj)
 {
-    ws_return_val_if_null(re, FALSE);
-    ws_return_val_if_null(subj, FALSE);
-
-    return match_pcre2(re->code, (PCRE2_SPTR)subj, PCRE2_ZERO_TERMINATED);
+    return ws_regex_matches_length(re, subj, -1);
 }
 
 
 bool
 ws_regex_matches_length(const ws_regex_t *re,
-                        const char *subj, size_t subj_length)
+                        const char *subj, ssize_t subj_length)
 {
+    bool matched;
+    pcre2_match_data *match_data;
+
     ws_return_val_if_null(re, FALSE);
     ws_return_val_if_null(subj, FALSE);
 
-    return match_pcre2(re->code, (PCRE2_SPTR)subj, (PCRE2_SIZE)subj_length);
+    /* We don't use the matched substring but pcre2_match requires
+     * at least one pair of offsets. */
+    match_data = pcre2_match_data_create(1, NULL);
+    matched = match_pcre2(re->code, subj, subj_length, match_data);
+    pcre2_match_data_free(match_data);
+    return matched;
+}
+
+
+bool
+ws_regex_matches_pos(const ws_regex_t *re,
+                        const char *subj, ssize_t subj_length,
+                        size_t pos_vect[2])
+{
+    bool matched;
+    pcre2_match_data *match_data;
+
+    ws_return_val_if_null(re, FALSE);
+    ws_return_val_if_null(subj, FALSE);
+
+    match_data = pcre2_match_data_create(1, NULL);
+    matched = match_pcre2(re->code, subj, subj_length, match_data);
+    if (matched && pos_vect) {
+        PCRE2_SIZE *ovect = pcre2_get_ovector_pointer(match_data);
+        pos_vect[0] = ovect[0];
+        pos_vect[1] = ovect[1];
+    }
+    pcre2_match_data_free(match_data);
+    return matched;
 }
 
 

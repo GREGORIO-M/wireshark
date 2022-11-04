@@ -101,7 +101,9 @@ static gboolean start_is_field_reference(const char *start)
 	char saved_c;
 	const header_field_info *hfinfo;
 
-	end = strchr(start, '}');
+	end = strchr(start, '#');
+	if (end == NULL)
+		end = strchr(start, '}');
 	if (end == NULL)
 		return FALSE;
 
@@ -109,6 +111,10 @@ static gboolean start_is_field_reference(const char *start)
 	/* This violates constness but we will restore the original string. */
 	*(char *)end = '\0';
 	/* Search for name in registered fields. */
+
+	if (start[0] == '@')
+		start++;
+
 	hfinfo = dfilter_resolve_unparsed(NULL, start);
 	/* Restore mangled string. */
 	*(char *)end = saved_c;

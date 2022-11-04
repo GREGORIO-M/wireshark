@@ -3006,6 +3006,7 @@ cytel-lm	3297/tcp/udp	# Cytel License Manager
 deskview	3298/tcp/udp	# DeskView
 pdrncs		3299/tcp/udp
 ceph		3300/tcp	# Ceph monitor
+tarantool	3301/tcp/udp	# Tarantool in-memory computing platform
 mcs-fastmail	3302/tcp/udp	# MCS Fastmail
 opsession-clnt	3303/tcp/udp	# OP Session Client
 opsession-srvr	3304/tcp/udp	# OP Session Server
@@ -3672,7 +3673,7 @@ lanrevagent	3970/tcp/udp	# LANrev Agent
 lanrevserver	3971/tcp/udp	# LANrev Server
 iconp		3972/tcp/udp	# ict-control Protocol
 progistics	3973/tcp/udp	# ConnectShip Progistics
-citysearch	3974/tcp/udp	# Remote Applicant Tracking Service
+xk22		3974/tcp/udp	# Remote Applicant Tracking Service
 airshot		3975/tcp/udp	# Air Shot
 opswagent	3976/tcp/udp	# Server Automation Agent
 opswmanager	3977/tcp/udp	# Opsware Manager
@@ -3917,8 +3918,9 @@ fdt-rcatp	4320/tcp/udp	# FDT Remote Categorization Protocol
 rwhois		4321/tcp/udp	# Remote Who Is
 trim-event	4322/tcp/udp	# TRIM Event Service
 trim-ice	4323/tcp/udp	# TRIM ICE Service
-geognosisman	4325/tcp/udp	# Cadcorp GeognoSIS Manager Service
-geognosis	4326/tcp/udp	# Cadcorp GeognoSIS Service
+geognosisadmin	4325/tcp	# Cadcorp GeognoSIS Administrator
+geognosisman	4325/udp	# Cadcorp GeognoSIS Administrator
+geognosis	4326/tcp/udp	# Cadcorp GeognoSIS
 jaxer-web	4327/tcp/udp	# Jaxer Web Protocol
 jaxer-manager	4328/tcp/udp	# Jaxer Manager Command Protocol
 publiqare-sync	4329/tcp	# PubliQare Distributed Environment Synchronisation Engine
@@ -4162,6 +4164,7 @@ xmcp		4788/tcp	# eXtensible Messaging Client Protocol
 vxlan		4789/udp	# Virtual eXtensible Local Area Network (VXLAN)
 vxlan-gpe	4790/udp	# Generic Protocol Extension for Virtual eXtensible Local Area Network (VXLAN)
 roce		4791/udp	# IP Routable RocE
+unified-bus	4792/tcp/udp	# IP Routable Unified Bus
 iims		4800/tcp/udp	# Icona Instant Messenging System
 iwec		4801/tcp/udp	# Icona Web Embedded Chat
 ilss		4802/tcp/udp	# Icona License System Server
@@ -4386,6 +4389,8 @@ eenet		5234/tcp/udp	# EEnet communications
 galaxy-network	5235/tcp/udp	# Galaxy Network Service
 padl2sim	5236/tcp/udp
 mnet-discovery	5237/tcp/udp	# m-net discovery
+attune		5242/tcp	# ATTUne API
+xycstatus	5243/tcp	# xyClient Status API and rendevous point
 downtools	5245/tcp	# DownTools Control Protocol
 downtools-disc	5245/udp	# DownTools Discovery Protocol
 capwap-control	5246/udp	# CAPWAP Control Protocol
@@ -4637,6 +4642,7 @@ spdp		5794/udp	# Simple Peered Discovery Protocol
 enlabel-dpl	5798/tcp	# Proprietary Website deployment service
 icmpd		5813/tcp/udp	# ICMPD
 spt-automation	5814/tcp/udp	# Support Automation
+autopassdaemon	5820/tcp	# AutoPass licensing
 shiprush-d-ch	5841/tcp	# Z-firm ShipRush interface for web access and bidirectional data
 reversion	5842/tcp	# Reversion Backup/Restore
 wherehoo	5859/tcp/udp	# WHEREHOO
@@ -4644,10 +4650,21 @@ ppsuitemsg	5863/tcp/udp	# PlanetPress Suite Messeng
 diameters	5868/tcp/sctp	# Diameter over TLS/TCP
 jute		5883/tcp	# Javascript Unit Test Environment
 rfb		5900/tcp/udp	# Remote Framebuffer
-cm		5910/tcp/udp/sctp	# Context Management
-cpdlc		5911/tcp/udp/sctp	# Controller Pilot Data Link Communication
-fis		5912/tcp/udp/sctp	# Flight Information Services
-ads-c		5913/tcp/udp/sctp	# Automatic Dependent Surveillance
+ff-ice		5903/tcp/udp/sctp	# Flight & Flow Info for Collaborative Env
+ag-swim		5904/tcp/udp/sctp	# Air-Ground SWIM
+asmgcs		5905/tcp/udp/sctp	# Adv Surface Mvmnt and Guidance Cont Sys
+rpas-c2		5906/tcp/udp/sctp	# Remotely Piloted Vehicle C&C
+dsd		5907/tcp/udp/sctp	# Distress and Safety Data App
+ipsma		5908/tcp/udp/sctp	# IPS Management Application
+agma		5909/tcp/udp/sctp	# Air-ground media advisory
+ats-atn		5910/tcp/udp	# Air Traffic Services applications using ATN
+cm		5910/sctp	# Context Management
+ats-acars	5911/tcp/udp	# Air Traffic Services applications using ACARS
+cpdlc		5911/sctp	# Controller Pilot Data Link Communication
+ais-met		5912/tcp/udp	# Aeronautical Information Service/Meteorological applications using ACARS
+fis		5912/sctp	# Flight Information Services
+aoc-acars	5913/tcp/udp	# Airline operational communications applications using ACARS
+ads-c		5913/sctp	# Automatic Dependent Surveillance
 indy		5963/tcp/udp	# Indy Application Server
 mppolicy-v5	5968/tcp/udp
 mppolicy-mgr	5969/tcp/udp
@@ -5088,6 +5105,7 @@ ms-do		7680/tcp/udp	# Microsoft Delivery Optimization Peer-to-Peer
 dmt		7683/tcp	# Cleondris DMT
 bolt		7687/tcp	# Bolt database connection
 collaber	7689/tcp/udp	# Collaber Network Service
+sovd		7690/tcp	# Service-Oriented Vehicle Diagnostics
 klio		7697/tcp/udp	# KLIO communications
 em7-secom	7700/tcp	# EM7 Secure Communications
 nfapi		7701/sctp	# SCF nFAPI defining MAC/PHY split
@@ -5712,6 +5730,7 @@ rads		12302/tcp	# Remote Administration Daemon (RAD) is a system service that of
 warehouse-sss	12321/tcp/udp	# Warehouse Monitoring Syst SSS
 warehouse	12322/tcp/udp	# Warehouse Monitoring Syst
 italk		12345/tcp/udp	# Italk Chat System
+carb-repl-ctrl	12546/tcp	# Carbonite Server Replication Control
 tsaf		12753/tcp/udp	# tsaf port
 netperf		12865/tcp	# control port for the netperf benchmark
 i-zipqd		13160/tcp/udp	# I-ZIPQD
@@ -5888,6 +5907,7 @@ rdm-tfs		21553/tcp	# Raima RDM TFS
 dfserver	21554/tcp/udp	# MineScape Design File Server
 vofr-gateway	21590/tcp/udp	# VoFR Gateway
 tvpm		21800/tcp/udp	# TVNC Pro Multiplexing
+sal		21801/tcp	# Safe AutoLogon
 webphone	21845/tcp/udp
 netspeak-is	21846/tcp/udp	# NetSpeak Corp. Directory Services
 netspeak-cs	21847/tcp/udp	# NetSpeak Corp. Connection Services

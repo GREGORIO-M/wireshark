@@ -21,7 +21,7 @@ guid_fvalue_set_guid(fvalue_t *fv, const e_guid_t *value)
     fv->value.guid = *value;
 }
 
-static gpointer
+static const e_guid_t *
 value_get(fvalue_t *fv)
 {
     return &(fv->value.guid);
@@ -87,10 +87,11 @@ guid_to_repr(wmem_allocator_t *scope, const fvalue_t *fv, ftrepr_t rtype _U_, in
     return guid_to_str(scope, &fv->value.guid);
 }
 
-static int
-cmp_order(const fvalue_t *a, const fvalue_t *b)
+static enum ft_result
+cmp_order(const fvalue_t *a, const fvalue_t *b, int *cmp)
 {
-    return memcmp(&a->value.guid, &b->value.guid, sizeof(e_guid_t));
+    *cmp = memcmp(&a->value.guid, &b->value.guid, sizeof(e_guid_t));
+    return FT_OK;
 }
 
 void
@@ -110,8 +111,11 @@ ftype_register_guid(void)
         NULL,                /* val_from_charconst */
         guid_to_repr,        /* val_to_string_repr */
 
+        NULL,                /* val_to_uinteger64 */
+        NULL,                /* val_to_sinteger64 */
+
         { .set_value_guid = guid_fvalue_set_guid }, /* union set_value */
-        { .get_value_ptr = value_get },             /* union get_value */
+        { .get_value_guid = value_get },             /* union get_value */
 
         cmp_order,
         NULL,

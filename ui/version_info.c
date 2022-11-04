@@ -36,15 +36,17 @@
 #include "version_info.h"
 
 #include <wsutil/cpu_info.h>
-#include <wsutil/copyright_info.h>
 #include <wsutil/os_version_info.h>
 #include <wsutil/crash_info.h>
 #include <wsutil/plugins.h>
 
 static char *appname_with_version;
+static char *copyright_info;
+static char *license_info;
 static char *comp_info;
 static char *runtime_info;
 
+static void end_string(GString *str);
 static void get_compiler_info(GString *str);
 static void get_mem_info(GString *str);
 
@@ -54,6 +56,16 @@ ws_init_version_info(const char *appname,
 		gather_feature_func gather_runtime)
 {
 	GString *comp_info_str, *runtime_info_str;
+	GString *copyright_info_str;
+	GString *license_info_str;
+
+	copyright_info_str = g_string_new(get_copyright_info());
+	end_string(copyright_info_str);
+	copyright_info = g_string_free(copyright_info_str, FALSE);
+
+	license_info_str = g_string_new(get_license_info_short());
+	end_string(license_info_str);
+	license_info = g_string_free(license_info_str, FALSE);
 
 	/*
 	 * Combine the supplied application name string with the
@@ -188,12 +200,25 @@ get_compiled_version_info(gather_feature_func gather_compile)
 
 	l = g_list_reverse(l);
 	g_list_foreach(l, feature_to_gstring, str);
+
+#ifdef HAVE_PLUGINS
+	g_string_append(str, ", with binary plugins");
+#else
+	g_string_append(str, ", without binary plugins");
+#endif
+
 #ifdef WS_DISABLE_DEBUG
 	g_string_append(str, ", release build");
 #endif
+
 #ifdef WS_DISABLE_ASSERT
 	g_string_append(str, ", without assertions");
 #endif
+
+#ifdef WS_DEBUG_UTF_8
+	g_string_append(str, ", with UTF-8 validation");
+#endif
+
 	g_string_append(str, ".");
 	end_string(str);
 	free_features(&l);
@@ -453,27 +478,25 @@ get_runtime_version_info(gather_feature_func gather_runtime)
 	if (gather_runtime != NULL) {
 		gather_runtime(&l);
 	}
+
+	l = g_list_reverse(l);
+	g_list_foreach(l, feature_to_gstring, str);
+
 	/*
 	 * Display LC_CTYPE as a relevant, portable and sort of representative
 	 * locale configuration without being exceedingly verbose and including
 	 * the whole shebang of categories using LC_ALL.
 	 */
 	if ((lc = setlocale(LC_CTYPE, NULL)) != NULL) {
-		with_feature(&l, "LC_TYPE=%s", lc);
+		g_string_append_printf(str, ", with LC_TYPE=%s", lc);
 	}
+
 #ifdef HAVE_PLUGINS
 	if (g_module_supported()) {
-		with_feature(&l, "binary plugins (%d loaded)", plugins_get_count());
+		g_string_append(str, ", binary plugins supported");
 	}
-	else {
-		without_feature(&l, "binary plugins (not supported by the platform)");
-	}
-#else
-	without_feature(&l, "binary plugins");
 #endif
 
-	l = g_list_reverse(l);
-	g_list_foreach(l, feature_to_gstring, str);
 	g_string_append_c(str, '.');
 	end_string(str);
 	free_features(&l);
@@ -520,13 +543,16 @@ get_ws_version_number(int *major, int *minor, int *micro)
 void
 show_version(void)
 {
-	printf("%s\n"
-			"\n"
-			"%s\n"
-			"%s\n"
-			"%s",
-			appname_with_version, get_copyright_info(),
-			comp_info, runtime_info);
+	printf("%s.\n\n"
+		"%s"
+		"%s\n"
+		"%s\n"
+		"%s",
+		appname_with_version,
+		copyright_info,
+		license_info,
+		comp_info,
+		runtime_info);
 }
 
 void
@@ -536,6 +562,38 @@ show_help_header(const char *description)
 		"%s\n"
 		"See https://www.wireshark.org for more information.\n",
 		appname_with_version, description);
+}
+
+/*
+ * Get copyright information.
+ */
+const char *
+get_copyright_info(void)
+{
+	return
+		"Copyright 1998-2022 Gerald Combs <gerald@wireshark.org> and contributors.";
+}
+
+const char *
+get_license_info_short(void)
+{
+	return
+		"Licensed under the terms of the GNU General Public License (version 2 or later). "
+		"This is free software; see the file named COPYING in the distribution. "
+		"There is NO WARRANTY; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.";
+}
+
+const char *
+get_license_info(void)
+{
+	return
+		"This program is free software: you can redistribute it and/or modify "
+		"it under the terms of the GNU General Public License as published by "
+		"the Free Software Foundation, either version 2 of the License, or "
+		"(at your option) any later version. This program is distributed in the "
+		"hope that it will be useful, but WITHOUT ANY WARRANTY; without even "
+		"the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. "
+		"See the GNU General Public License for more details.";
 }
 
 /*

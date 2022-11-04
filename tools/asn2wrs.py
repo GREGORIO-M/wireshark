@@ -326,6 +326,19 @@ StringTypes = ['Numeric', 'Printable', 'IA5', 'BMP', 'Universal', 'UTF8',
                'Teletex', 'T61', 'Videotex', 'Graphic', 'ISO646', 'Visible',
                'General']
 
+# Effective permitted-alphabet constraints are PER-visible only
+# for the known-multiplier character string types (X.691 27.1)
+#
+# XXX: This should include BMPString (UCS2) and UniversalString (UCS4),
+# but asn2wrs only suports the RestrictedCharacterStringValue
+# notation of "cstring", but not that of "CharacterStringList",
+# "Quadruple", or "Tuple" (See X.680 41.8), and packet-per.c does
+# not support members of the permitted-alphabet being outside the
+# ASCII range. We don't currently have any ASN.1 modules that need it,
+# anyway.
+KnownMultiplierStringTypes = ('NumericString', 'PrintableString', 'IA5String',
+                              'ISO646String', 'VisibleString')
+
 for s in StringTypes:
     reserved_words[s + 'String'] = s + 'String'
 
@@ -802,7 +815,7 @@ class EthCtx:
 
     #--- eth_reg_assign ---------------------------------------------------------
     def eth_reg_assign(self, ident, val, virt=False):
-        #print "eth_reg_assign(ident='%s')" % (ident)
+        #print("eth_reg_assign(ident='%s')" % (ident), 'module=', self.Module())
         if ident in self.assign:
             raise DuplicateError("assignment", ident)
         self.assign[ident] = { 'val' : val , 'virt' : virt }
@@ -922,13 +935,14 @@ class EthCtx:
 
     #--- eth_reg_type -----------------------------------------------------------
     def eth_reg_type(self, ident, val, mod=None):
-        #print "eth_reg_type(ident='%s', type='%s')" % (ident, val.type)
+        #print("eth_reg_type(ident='%s', type='%s')" % (ident, val.type))
         if ident in self.type:
             if self.type[ident]['import'] and (self.type[ident]['import'] == self.Module()) :
                 # replace imported type
                 del self.type[ident]
                 self.type_imp.remove(ident)
             else:
+                #print('DuplicateError: import=', self.type[ident]['import'], 'module=', self.Module())
                 raise DuplicateError("type", ident)
         val.ident = ident
         self.type[ident] = { 'val' : val, 'import' : None }
@@ -3662,7 +3676,8 @@ class Constraint (Node):
     def Needs64b(self, ectx):
         (minv, maxv, ext) = self.GetValue(ectx)
         if ((str(minv).isdigit() or ((str(minv)[0] == "-") and str(minv)[1:].isdigit())) \
-        and str(maxv).isdigit() and (abs(int(maxv) - int(minv)) >= 2**32)) \
+        and (str(maxv).isdigit() or ((str(maxv)[0] == "-") and str(maxv)[1:].isdigit())) \
+        and ((abs(int(maxv) - int(minv)) >= 2**32) or (int(minv) < -2**31) or (int(maxv) >= 2**32))) \
         or (maxv == 'MAX') or (minv == 'MIN'):
             return True
         return False
@@ -5147,7 +5162,11 @@ class RestrictedCharacterStringType (CharacterStringType):
                                         par=(('%(IMPLICIT_TAG)s', '%(STRING_TAG)s'),
                                              ('%(ACTX)s', '%(TREE)s', '%(TVB)s', '%(OFFSET)s', '%(HF_INDEX)s'),
                                              ('%(VAL_PTR)s',),))
-        elif (ectx.Per() and self.HasPermAlph()):
+        elif (ectx.Per() and self.HasPermAlph() and self.eth_tsname() in KnownMultiplierStringTypes):
+            # XXX: If there is a permitted alphabet but it is extensible,
+            # then the permitted-alphabet is not PER-visible and should be
+            # ignored. (X.691 9.3.10, 9.3.18) We don't handle extensible
+            # permitted-alphabets.
             body = ectx.eth_fn_call('dissect_%(ER)s_restricted_character_string', ret='offset',
                                     par=(('%(TVB)s', '%(OFFSET)s', '%(ACTX)s', '%(TREE)s', '%(HF_INDEX)s'),
                                          ('%(MIN_VAL)s', '%(MAX_VAL)s', '%(EXT)s', '%(ALPHABET)s', '%(ALPHABET_LEN)s'),

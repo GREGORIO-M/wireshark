@@ -17,10 +17,11 @@
 #include <wsutil/time_util.h>
 
 
-static int
-cmp_order(const fvalue_t *a, const fvalue_t *b)
+static enum ft_result
+cmp_order(const fvalue_t *a, const fvalue_t *b, int *cmp)
 {
-	return nstime_cmp(&(a->value.time), &(b->value.time));
+	*cmp = nstime_cmp(&(a->value.time), &(b->value.time));
+	return FT_OK;
 }
 
 /*
@@ -186,7 +187,7 @@ parse_month_name(const char *s, int *tm_mon)
 #define EXAMPLE "Example: \"Nov 12, 1999 08:55:44.123\" or \"2011-07-04 12:34:56\""
 
 static gboolean
-absolute_val_from_string(fvalue_t *fv, const char *s, char **err_msg_ptr)
+absolute_val_from_string(fvalue_t *fv, const char *s, size_t len _U_, char **err_msg_ptr)
 {
 	struct tm tm;
 	const char *curptr = NULL;
@@ -285,7 +286,7 @@ done:
 		 * backward, so that there are two different times that
 		 * it could be)?
 		 */
-		err_msg = ws_strdup("\"%s\" cannot be converted to a valid calendar time.");
+		err_msg = ws_strdup_printf("\"%s\" cannot be converted to a valid calendar time.", s);
 		goto fail;
 	}
 
@@ -310,7 +311,7 @@ fail:
 static gboolean
 absolute_val_from_literal(fvalue_t *fv, const char *s, gboolean allow_partial_value _U_, gchar **err_msg)
 {
-	return absolute_val_from_string(fv, s, err_msg);
+	return absolute_val_from_string(fv, s, 0, err_msg);
 }
 
 static void
@@ -332,7 +333,7 @@ time_fvalue_set(fvalue_t *fv, const nstime_t *value)
 	fv->value.time = *value;
 }
 
-static gpointer
+static const nstime_t *
 value_get(fvalue_t *fv)
 {
 	return &(fv->value.time);
@@ -462,8 +463,11 @@ ftype_register_time(void)
 		NULL,				/* val_from_charconst */
 		absolute_val_to_repr,		/* val_to_string_repr */
 
+		NULL,				/* val_to_uinteger64 */
+		NULL,				/* val_to_sinteger64 */
+
 		{ .set_value_time = time_fvalue_set },	/* union set_value */
-		{ .get_value_ptr = value_get },		/* union get_value */
+		{ .get_value_time = value_get },	/* union get_value */
 
 		cmp_order,
 		NULL,				/* cmp_contains */
@@ -494,8 +498,11 @@ ftype_register_time(void)
 		NULL,				/* val_from_charconst */
 		relative_val_to_repr,		/* val_to_string_repr */
 
+		NULL,				/* val_to_uinteger64 */
+		NULL,				/* val_to_sinteger64 */
+
 		{ .set_value_time = time_fvalue_set },	/* union set_value */
-		{ .get_value_ptr = value_get },		/* union get_value */
+		{ .get_value_time = value_get },	/* union get_value */
 
 		cmp_order,
 		NULL,				/* cmp_contains */

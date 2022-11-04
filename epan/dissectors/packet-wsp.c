@@ -3990,10 +3990,10 @@ dissect_redirect(tvbuff_t *tvb, int offset, packet_info *pinfo,
             redir_address.data = (const guint8 *)&address_ipv4;
             /* Find a conversation based on redir_address and pinfo->dst */
             conv = find_conversation(pinfo->num, &redir_address, &pinfo->dst,
-                ENDPOINT_UDP, port_num, 0, NO_PORT_B);
+                CONVERSATION_UDP, port_num, 0, NO_PORT_B);
             if (conv == NULL) { /* This conversation does not exist yet */
                 conv = conversation_new(pinfo->num, &redir_address,
-                    &pinfo->dst, ENDPOINT_UDP, port_num, 0, NO_PORT2);
+                    &pinfo->dst, CONVERSATION_UDP, port_num, 0, NO_PORT2);
             }
             /* Apply WSP dissection to the conversation */
             conversation_set_dissector(conv, dissector_handle);
@@ -4023,10 +4023,10 @@ dissect_redirect(tvbuff_t *tvb, int offset, packet_info *pinfo,
             redir_address.data = (const guint8 *)&address_ipv6;
             /* Find a conversation based on redir_address and pinfo->dst */
             conv = find_conversation(pinfo->num, &redir_address, &pinfo->dst,
-                ENDPOINT_UDP, port_num, 0, NO_PORT_B);
+                CONVERSATION_UDP, port_num, 0, NO_PORT_B);
             if (conv == NULL) { /* This conversation does not exist yet */
                 conv = conversation_new(pinfo->num, &redir_address,
-                    &pinfo->dst, ENDPOINT_UDP, port_num, 0, NO_PORT2);
+                    &pinfo->dst, CONVERSATION_UDP, port_num, 0, NO_PORT2);
             }
             /* Apply WSP dissection to the conversation */
             conversation_set_dissector(conv, dissector_handle);
@@ -5642,7 +5642,7 @@ static void wsp_stat_init(stat_tap_table_ui* new_stat)
 }
 
 static tap_packet_status
-wsp_stat_packet(void *tapdata, packet_info *pinfo _U_, epan_dissect_t *edt _U_, const void *wiv_ptr)
+wsp_stat_packet(void *tapdata, packet_info *pinfo _U_, epan_dissect_t *edt _U_, const void *wiv_ptr, tap_flags_t flags _U_)
 {
     stat_data_t* stat_data = (stat_data_t*)tapdata;
     const wsp_info_value_t *value = (const wsp_info_value_t *)wiv_ptr;
