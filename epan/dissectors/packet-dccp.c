@@ -890,7 +890,7 @@ dissect_options(tvbuff_t *tvb, packet_info *pinfo,
                         proto_tree_add_item(mp_option_sub_tree, hf_mpdccp_join_token, tvb, offset+1, 4, ENC_BIG_ENDIAN);
                         proto_tree_add_item(mp_option_sub_tree, hf_mpdccp_join_nonce, tvb, offset+5, 4, ENC_BIG_ENDIAN);
                     } else {
-                        mp_option_sub_item = proto_tree_add_item(option_tree, hf_dccp_option_data, tvb, offset+1, option_len, ENC_NA);
+                        mp_option_sub_item = proto_tree_add_item(option_tree, hf_dccp_option_data, tvb, offset, option_len, ENC_NA);
                         expert_add_info_format(pinfo, mp_option_sub_item, &ei_dccp_option_len_bad,
                                    "Wrong Data checksum length, [%u != 9]", option_len);
                     }
@@ -908,7 +908,7 @@ dissect_options(tvbuff_t *tvb, packet_info *pinfo,
                         proto_tree_add_item(mp_option_sub_tree, hf_mpdccp_key_type, tvb, offset, 1, ENC_BIG_ENDIAN);
                         proto_tree_add_item(mp_option_sub_tree, hf_mpdccp_key_key, tvb, offset+1, option_len-1, ENC_BIG_ENDIAN);
                     } else {
-                        mp_option_sub_item = proto_tree_add_item(mp_option_sub_tree, hf_dccp_option_data, tvb, offset+1, option_len, ENC_NA);
+                        mp_option_sub_item = proto_tree_add_item(mp_option_sub_tree, hf_dccp_option_data, tvb, offset, option_len, ENC_NA);
                         expert_add_info_format(pinfo, mp_option_sub_item, &ei_dccp_option_len_bad,
                                    "Wrong Data checksum length, [8 < %u < 69]", option_len);
                     }
@@ -943,7 +943,7 @@ dissect_options(tvbuff_t *tvb, packet_info *pinfo,
                         proto_tree_add_item(mp_option_sub_tree, hf_mpdccp_rtt_value,tvb, offset+1, 4, ENC_BIG_ENDIAN);
                         proto_tree_add_item(mp_option_sub_tree, hf_mpdccp_rtt_age,tvb, offset+5, 4, ENC_BIG_ENDIAN);
                     } else {
-                        mp_option_sub_item = proto_tree_add_item(mp_option_sub_tree, hf_dccp_option_data, tvb, offset+1, option_len, ENC_NA);
+                        mp_option_sub_item = proto_tree_add_item(mp_option_sub_tree, hf_dccp_option_data, tvb, offset, option_len, ENC_NA);
                         expert_add_info_format(pinfo, mp_option_sub_item, &ei_dccp_option_len_bad,
                                    "Wrong Data checksum length, [%u != 9]", option_len);
                     }
@@ -973,7 +973,7 @@ dissect_options(tvbuff_t *tvb, packet_info *pinfo,
 			proto_tree_add_item(mp_option_sub_tree,hf_mpdccp_addrport,tvb,offset+17,2,ENC_BIG_ENDIAN);
                	
                     } else {
-                        mp_option_sub_item = proto_tree_add_item(mp_option_sub_tree, hf_dccp_option_data, tvb, offset+1, option_len, ENC_NA);
+                        mp_option_sub_item = proto_tree_add_item(mp_option_sub_tree, hf_dccp_option_data, tvb, offset, option_len, ENC_NA);
                         expert_add_info_format(pinfo, mp_option_sub_item, &ei_dccp_option_len_bad,
                                    "Wrong Data checksum length, [%u != 5 || 7 || 17 || 19]", option_len);
                     }
@@ -1008,6 +1008,7 @@ dissect_options(tvbuff_t *tvb, packet_info *pinfo,
                     offset+=1;
                     break;
                 default:
+                    offset+=1;
                     mp_option_sub_item = proto_tree_add_item(option_tree, hf_dccp_option_data, tvb, offset, option_len, ENC_NA);
                     expert_add_info_format(pinfo, mp_option_sub_item, &ei_dccp_option_len_bad,
                                    "MP-DCCP option [%u] not defined, [len: %u ]", mp_option_type, option_len);
