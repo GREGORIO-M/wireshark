@@ -901,12 +901,12 @@ dissect_options(tvbuff_t *tvb, packet_info *pinfo,
                     //offset+=1;//
                     break;
                 case 3:
-                    mp_option_sub_item = proto_tree_add_item(option_tree, hf_mpdccp_key, tvb, offset+1, option_len, ENC_BIG_ENDIAN);//1-->option_len //offset+1--->offset check mpaddr 2
+                    mp_option_sub_item = proto_tree_add_item(option_tree, hf_mpdccp_key, tvb, offset+1, option_len, ENC_BIG_ENDIAN);
                     mp_option_sub_tree = proto_item_add_subtree(mp_option_sub_item, ett_dccp_options_item);
                     offset += 1;
                     if (option_len > 8 && option_len < 69) {
                         proto_tree_add_item(mp_option_sub_tree, hf_mpdccp_key_type, tvb, offset, 1, ENC_BIG_ENDIAN);
-                        proto_tree_add_item(mp_option_sub_tree, hf_mpdccp_key_key, tvb, offset+1, option_len-1, ENC_BIG_ENDIAN);//offset+1--->offset
+                        proto_tree_add_item(mp_option_sub_tree, hf_mpdccp_key_key, tvb, offset+1, option_len-1, ENC_BIG_ENDIAN);
                     } else {
                         mp_option_sub_item = proto_tree_add_item(mp_option_sub_tree, hf_dccp_option_data, tvb, offset, option_len, ENC_NA);
                         expert_add_info_format(pinfo, mp_option_sub_item, &ei_dccp_option_len_bad,
