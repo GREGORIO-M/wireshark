@@ -912,19 +912,15 @@ dissect_options(tvbuff_t *tvb, packet_info *pinfo,
                     }
                     break;
                 case 4:
-                mp_option_sub_item = proto_tree_add_item(option_tree, hf_mpdccp_seq, tvb, offset+1, 6, ENC_BIG_ENDIAN);
-                offset += 1;
-                //mp_option_sub_tree = proto_item_add_subtree(mp_option_sub_item, ett_dccp_options_item);
-                //offset += 2;
-                //      if (option_len == 6) {//9
-                //        //proto_tree_add_item(option_tree, hf_mpdccp_seq, tvb, offset+4, 6, ENC_BIG_ENDIAN);
-                //        proto_tree_add_item(option_tree, hf_mpdccp_seq, tvb, offset, 6, ENC_BIG_ENDIAN);//6
-                //        //col_add_fstr(pinfo->cinfo, COL_INFO, "OaSeq: %u", tvb_get_guint32(tvb, offset, ENC_BIG_ENDIAN));
-                //    } else  {
-                //        mp_option_sub_item = proto_tree_add_item(option_tree, hf_mpdccp_seq, tvb, offset, option_len, ENC_NA);
-                //        expert_add_info_format(pinfo, mp_option_sub_item, &ei_dccp_option_len_bad,
-                //                   "Wrong Data checksum length, [%u != 6]", option_len);
-                //    }
+                      if (option_len == 6) {
+                        proto_tree_add_item(option_tree, hf_mpdccp_seq, tvb, offset+1, 6, ENC_BIG_ENDIAN);//6
+                        //col_add_fstr(pinfo->cinfo, COL_INFO, "OaSeq: %u", tvb_get_guint32(tvb, offset, ENC_BIG_ENDIAN));
+                    } else  {
+                        mp_option_sub_item = proto_tree_add_item(option_tree, hf_mpdccp_seq, tvb, offset, option_len, ENC_NA);
+                        expert_add_info_format(pinfo, mp_option_sub_item, &ei_dccp_option_len_bad,
+                                   "Wrong Data checksum length, [%u != 6]", option_len);
+                    }
+                    offset+=1;
                     break;
                 case 5:
                     if (option_len == 20) {
