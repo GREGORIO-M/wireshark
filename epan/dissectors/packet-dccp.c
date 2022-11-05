@@ -882,7 +882,7 @@ dissect_options(tvbuff_t *tvb, packet_info *pinfo,
                     //offset+=1;//
                     break;
                 case 1:
-                    mp_option_sub_item = proto_tree_add_item(option_tree, hf_mpdccp_join, tvb, offset+1, 9, ENC_BIG_ENDIAN);//1-->9
+                    mp_option_sub_item = proto_tree_add_item(option_tree, hf_mpdccp_join, tvb, offset+1, 9, ENC_BIG_ENDIAN);
                     mp_option_sub_tree = proto_item_add_subtree(mp_option_sub_item, ett_dccp_options_item);
                     offset += 1;
                     if (option_len == 9) {
