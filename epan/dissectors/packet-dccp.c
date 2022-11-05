@@ -913,7 +913,7 @@ dissect_options(tvbuff_t *tvb, packet_info *pinfo,
                     break;
                 case 4:
                       if (option_len == 6) {
-                        proto_tree_add_item(option_tree, hf_mpdccp_seq, tvb, offset+1, 6, ENC_BIG_ENDIAN);//6
+                        proto_tree_add_item(option_tree, hf_mpdccp_seq, tvb, offset+1, 6, ENC_BIG_ENDIAN);
                         //col_add_fstr(pinfo->cinfo, COL_INFO, "OaSeq: %u", tvb_get_guint32(tvb, offset, ENC_BIG_ENDIAN));
                     } else  {
                         mp_option_sub_item = proto_tree_add_item(option_tree, hf_mpdccp_seq, tvb, offset, option_len, ENC_NA);
