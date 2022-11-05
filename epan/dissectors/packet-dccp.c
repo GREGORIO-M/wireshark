@@ -910,7 +910,7 @@ dissect_options(tvbuff_t *tvb, packet_info *pinfo,
                     } else {
                         mp_option_sub_item = proto_tree_add_item(mp_option_sub_tree, hf_dccp_option_data, tvb, offset, option_len, ENC_NA);
                         expert_add_info_format(pinfo, mp_option_sub_item, &ei_dccp_option_len_bad,
-                                   "Wrong Data checksum length, [%u != 9 || 33 || 65]", option_len);
+                                   "Wrong Data checksum length, [8 < %u < 69]", option_len);
                     }
                     break;
                 case 4:
