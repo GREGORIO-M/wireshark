@@ -1008,7 +1008,7 @@ dissect_options(tvbuff_t *tvb, packet_info *pinfo,
                     offset+=1;
                     break;
                 default:
-                    mp_option_sub_item = proto_tree_add_item(mp_option_sub_tree, hf_dccp_option_data, tvb, offset, option_len, ENC_NA);
+                    mp_option_sub_item = proto_tree_add_item(option_tree, hf_dccp_option_data, tvb, offset, option_len, ENC_NA);
                     expert_add_info_format(pinfo, mp_option_sub_item, &ei_dccp_option_len_bad,
                                    "MP-DCCP option [%u] not defined, [len: %u ]", mp_option_type, option_len);
                     break;
