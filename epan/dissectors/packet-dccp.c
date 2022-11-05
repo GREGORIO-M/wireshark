@@ -878,10 +878,10 @@ dissect_options(tvbuff_t *tvb, packet_info *pinfo,
 
             switch (mp_option_type) {
                 case 0:
-                    proto_tree_add_item(option_tree, hf_mpdccp_confirm, tvb, offset, option_len, ENC_BIG_ENDIAN);
+                    proto_tree_add_item(option_tree, hf_mpdccp_confirm, tvb, offset+1, option_len, ENC_BIG_ENDIAN);
                     break;
                 case 1:
-                    mp_option_sub_item = proto_tree_add_item(option_tree, hf_mpdccp_join, tvb, offset, 1, ENC_BIG_ENDIAN);
+                    mp_option_sub_item = proto_tree_add_item(option_tree, hf_mpdccp_join, tvb, offset+1, 1, ENC_BIG_ENDIAN);
                     mp_option_sub_tree = proto_item_add_subtree(mp_option_sub_item, ett_dccp_options_item);
                     offset += 1;
                     if (option_len == 9) {
@@ -896,10 +896,10 @@ dissect_options(tvbuff_t *tvb, packet_info *pinfo,
                     break;
 
                 case 2:
-                    proto_tree_add_item(option_tree, hf_mpdccp_fast_close, tvb, offset, option_len, ENC_BIG_ENDIAN);
+                    proto_tree_add_item(option_tree, hf_mpdccp_fast_close, tvb, offset+1, option_len, ENC_BIG_ENDIAN);
                     break;
                 case 3:
-                    mp_option_sub_item = proto_tree_add_item(option_tree, hf_mpdccp_key, tvb, offset, 1, ENC_BIG_ENDIAN);
+                    mp_option_sub_item = proto_tree_add_item(option_tree, hf_mpdccp_key, tvb, offset+1, 1, ENC_BIG_ENDIAN);
                     mp_option_sub_tree = proto_item_add_subtree(mp_option_sub_item, ett_dccp_options_item);
                     offset += 1;
                     if (option_len > 8 && option_len < 69) {
@@ -912,26 +912,32 @@ dissect_options(tvbuff_t *tvb, packet_info *pinfo,
                     }
                     break;
                 case 4:
-                    if (option_len == 6) {//Was 4, meaning SEQ is 3 bytes
-                        proto_tree_add_item(option_tree, hf_mpdccp_seq, tvb, offset, 4, ENC_BIG_ENDIAN);
-                        //col_add_fstr(pinfo->cinfo, COL_INFO, "OaSeq: %u", tvb_get_guint32(tvb, offset, ENC_BIG_ENDIAN));
-                    } else  {
-                        mp_option_sub_item = proto_tree_add_item(option_tree, hf_mpdccp_seq, tvb, offset, option_len, ENC_BIG_ENDIAN);
-                        expert_add_info_format(pinfo, mp_option_sub_item, &ei_dccp_option_len_bad,
-                                   "Wrong Data checksum length, [%u != 4]", option_len);
-                    }
+                mp_option_sub_item = proto_tree_add_item(option_tree, hf_mpdccp_seq, tvb, offset+1, 6, ENC_BIG_ENDIAN);
+                offset += 1;
+                //mp_option_sub_tree = proto_item_add_subtree(mp_option_sub_item, ett_dccp_options_item);
+                //offset += 2;
+                //      if (option_len == 6) {//9
+                //        //proto_tree_add_item(option_tree, hf_mpdccp_seq, tvb, offset+4, 6, ENC_BIG_ENDIAN);
+                //        proto_tree_add_item(option_tree, hf_mpdccp_seq, tvb, offset, 6, ENC_BIG_ENDIAN);//6
+                //        //col_add_fstr(pinfo->cinfo, COL_INFO, "OaSeq: %u", tvb_get_guint32(tvb, offset, ENC_BIG_ENDIAN));
+                //    } else  {
+                //        mp_option_sub_item = proto_tree_add_item(option_tree, hf_mpdccp_seq, tvb, offset, option_len, ENC_NA);
+                //        expert_add_info_format(pinfo, mp_option_sub_item, &ei_dccp_option_len_bad,
+                //                   "Wrong Data checksum length, [%u != 6]", option_len);
+                //    }
                     break;
                 case 5:
                     if (option_len == 20) {
-                        proto_tree_add_item(option_tree, hf_mpdccp_hmac, tvb, offset, 20, ENC_BIG_ENDIAN);
+                        proto_tree_add_item(option_tree, hf_mpdccp_hmac, tvb, offset+1, 20, ENC_BIG_ENDIAN);
                     } else {
                         mp_option_sub_item = proto_tree_add_item(option_tree, hf_mpdccp_hmac, tvb, offset, option_len, ENC_BIG_ENDIAN);
                         expert_add_info_format(pinfo, mp_option_sub_item, &ei_dccp_option_len_bad,
                                    "Wrong Data checksum length, [%u != 20]", option_len);
                     }
+                    offset+=1;
                     break;
                 case 6:
-                    mp_option_sub_item = proto_tree_add_item(option_tree, hf_mpdccp_rtt, tvb, offset, 1, ENC_BIG_ENDIAN);
+                    mp_option_sub_item = proto_tree_add_item(option_tree, hf_mpdccp_rtt, tvb, offset+1, 1, ENC_BIG_ENDIAN);
                     mp_option_sub_tree = proto_item_add_subtree(mp_option_sub_item, ett_dccp_options_item);
                     offset += 1;
                     if (option_len == 9) {
@@ -942,15 +948,16 @@ dissect_options(tvbuff_t *tvb, packet_info *pinfo,
                         proto_tree_add_item(mp_option_sub_tree, hf_mpdccp_rtt_age,
                                     tvb, offset+5, 4, ENC_BIG_ENDIAN);
                     } else {
-                        mp_option_sub_item = proto_tree_add_item(mp_option_sub_tree, hf_dccp_option_data, tvb, offset, option_len, ENC_NA);
+                        mp_option_sub_item = proto_tree_add_item(mp_option_sub_tree, hf_dccp_option_data, tvb, offset+1, option_len, ENC_NA);
                         expert_add_info_format(pinfo, mp_option_sub_item, &ei_dccp_option_len_bad,
                                    "Wrong Data checksum length, [%u != 9]", option_len);
                     }
                     break;
               	
               	case 7:
-                    mp_option_sub_item=proto_tree_add_item(option_tree,hf_mpdccp_addaddr,tvb,offset,option_len,ENC_BIG_ENDIAN);
+                    mp_option_sub_item=proto_tree_add_item(option_tree,hf_mpdccp_addaddr,tvb,offset+1,option_len,ENC_BIG_ENDIAN);
                     mp_option_sub_tree = proto_item_add_subtree(mp_option_sub_item, ett_dccp_options_item);
+                    //offset += 1;
                     offset += 1;
 
                	    if (option_len == 5){
@@ -980,7 +987,7 @@ dissect_options(tvbuff_t *tvb, packet_info *pinfo,
                 
                 case 8:
                     if (option_len == 1) {
-                        mp_option_sub_item=proto_tree_add_item(option_tree,hf_mpdccp_removeaddr,tvb,offset,1,ENC_BIG_ENDIAN);
+                        mp_option_sub_item=proto_tree_add_item(option_tree,hf_mpdccp_removeaddr,tvb,offset+1,1,ENC_BIG_ENDIAN);
                     } else {
                         mp_option_sub_item = proto_tree_add_item(option_tree, hf_mpdccp_removeaddr, tvb, offset, option_len, ENC_BIG_ENDIAN);
                         expert_add_info_format(pinfo, mp_option_sub_item, &ei_dccp_option_len_bad,
@@ -988,11 +995,11 @@ dissect_options(tvbuff_t *tvb, packet_info *pinfo,
                     }
                     break;
                 case 9:
-                    mp_option_sub_item = proto_tree_add_item(option_tree, hf_mpdccp_prio, tvb, offset, 1, ENC_BIG_ENDIAN);
+                    mp_option_sub_item = proto_tree_add_item(option_tree, hf_mpdccp_prio_value, tvb, offset+1, 1, ENC_BIG_ENDIAN);//+1?
                     mp_option_sub_tree = proto_item_add_subtree(mp_option_sub_item, ett_dccp_options_item);
                     offset += 1;
                     if (option_len == 1) {
-                        proto_tree_add_item(mp_option_sub_tree, hf_mpdccp_prio_value, tvb, offset+1, 1, ENC_BIG_ENDIAN);
+                        proto_tree_add_item(mp_option_sub_tree, hf_mpdccp_prio_value, tvb, offset, 1, ENC_BIG_ENDIAN);
                     } else {
                         mp_option_sub_item = proto_tree_add_item(mp_option_sub_tree, hf_dccp_option_data, tvb, offset, option_len, ENC_NA);
                         expert_add_info_format(pinfo, mp_option_sub_item, &ei_dccp_option_len_bad,
@@ -1001,10 +1008,10 @@ dissect_options(tvbuff_t *tvb, packet_info *pinfo,
                     break;
                 case 10:
                     mp_option_sub_item = proto_tree_add_item(option_tree, hf_mpdccp_close,
-                                    tvb, offset, option_len, ENC_BIG_ENDIAN);
+                                    tvb, offset+1, option_len, ENC_BIG_ENDIAN);
                     break;
                 case 11:
-                    proto_tree_add_item(option_tree, hf_mpdccp_exp, tvb, offset, option_len, ENC_BIG_ENDIAN);
+                    proto_tree_add_item(option_tree, hf_mpdccp_exp, tvb, offset+1, option_len, ENC_BIG_ENDIAN);
                     break;
                 default:
                     mp_option_sub_item = proto_tree_add_item(mp_option_sub_tree, hf_dccp_option_data, tvb, offset, option_len, ENC_NA);
@@ -1853,7 +1860,7 @@ proto_register_dccp(void)
         {&hf_mpdccp_key_type,{"MP_KEY type", "mpdccp.mp_key_type",FT_NONE, BASE_NONE, NULL, 0x0, NULL, HFILL}},
         {&hf_mpdccp_key_key,{"MP_KEY hash", "mpdccp.mp_key_hash",FT_NONE, BASE_NONE, NULL, 0x0, NULL, HFILL}},
 
-        {&hf_mpdccp_seq,{"MP_SEQ", "mpdccp.mp_seq",FT_UINT32, BASE_DEC, NULL, 0x0, NULL, HFILL}},
+        {&hf_mpdccp_seq,{"MP_SEQ", "mpdccp.mp_seq",FT_UINT64, BASE_DEC, NULL, 0x0, NULL, HFILL}},
 
         {&hf_mpdccp_hmac,{"MP_HMAC", "mpdccp.mp_hmac",FT_NONE, BASE_NONE, NULL, 0x0, NULL, HFILL}},
 
