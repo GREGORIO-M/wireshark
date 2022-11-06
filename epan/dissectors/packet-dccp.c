@@ -1896,7 +1896,7 @@ proto_register_dccp(void)
       {&hf_mpdccp_removeaddr,{"MP_REMOVEADDR", "mpdccp.mp_removeaddr",FT_UINT16, BASE_DEC, NULL, 0x0, NULL, HFILL}},
       
         {&hf_mpdccp_prio,{"MP_PRIO", "mpdccp.mp_prio",FT_UINT8, BASE_DEC, NULL, 0x0, NULL, HFILL}},
-        {&hf_mpdccp_prio_value,{"Address ID", "mpdccp.mp_prio",FT_UINT8, BASE_DEC, NULL, 0x0, NULL, HFILL}},
+        {&hf_mpdccp_prio_value,{"Priority", "mpdccp.mp_prio",FT_UINT8, BASE_DEC, NULL, 0x0, NULL, HFILL}},
 
         {&hf_mpdccp_close,{"MP_CLOSE", "mpdccp.mp_close",FT_UINT8, BASE_DEC, NULL, 0x0, NULL, HFILL}},
 
